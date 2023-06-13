@@ -1,4 +1,4 @@
-package slicesz
+package slicez
 
 // Diff compares slices s1 and s2, puts elements from s1 that do not exist in s2 into dst, and returns it.
 func Diff[T comparable](dst, s1, s2 []T) []T {

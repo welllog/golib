@@ -1,4 +1,4 @@
-package types
+package typez
 
 type Signed interface {
 	~int | ~int64 | ~int32 | ~int16 | ~int8

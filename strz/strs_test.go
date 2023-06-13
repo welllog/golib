@@ -1,4 +1,4 @@
-package strsz
+package strz
 
 import (
 	"testing"

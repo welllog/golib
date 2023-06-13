@@ -1,4 +1,4 @@
-package slicesz
+package slicez
 
 import (
 	"reflect"
@@ -355,6 +355,107 @@ func TestUniqueInPlace(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := UniqueInPlace(tt.args.s); !Equal(got, tt.want) {
 				t.Errorf("UniqueInPlace() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFilter(t *testing.T) {
+	type args struct {
+		s         []int
+		predicate func(int) bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{
+			name: "Test case 1",
+			args: args{
+				s: []int{1, 2, 3, 4, 5},
+				predicate: func(i int) bool {
+					return i%2 == 0
+				},
+			},
+			want: []int{2, 4},
+		},
+		{
+			name: "Test case 2",
+			args: args{
+				s: []int{1, 2, 3},
+				predicate: func(i int) bool {
+					return i > 3
+				},
+			},
+			want: []int{},
+		},
+		{
+			name: "Test case 3",
+			args: args{
+				s: []int{1, 2, 3},
+				predicate: func(i int) bool {
+					return i > 0
+				},
+			},
+			want: []int{1, 2, 3},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var dst []int
+			if got := Filter(dst, tt.args.s, tt.args.predicate); !Equal(got, tt.want) {
+				t.Errorf("Filter() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFilterInPlace(t *testing.T) {
+	type args struct {
+		s         []int
+		predicate func(int) bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{
+			name: "Test case 1",
+			args: args{
+				s: []int{1, 2, 3, 4, 5},
+				predicate: func(i int) bool {
+					return i%2 == 0
+				},
+			},
+			want: []int{2, 4},
+		},
+		{
+			name: "Test case 2",
+			args: args{
+				s: []int{1, 2, 3},
+				predicate: func(i int) bool {
+					return i > 3
+				},
+			},
+			want: []int{},
+		},
+		{
+			name: "Test case 3",
+			args: args{
+				s: []int{1, 2, 3},
+				predicate: func(i int) bool {
+					return i > 0
+				},
+			},
+			want: []int{1, 2, 3},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := FilterInPlace(tt.args.s, tt.args.predicate); !Equal(got, tt.want) {
+				t.Errorf("FilterInPlace() = %v, want %v", got, tt.want)
 			}
 		})
 	}
