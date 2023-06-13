@@ -7,7 +7,7 @@ import (
 )
 
 func TestBit_Add(t *testing.T) {
-	m := NewBit()
+	m := NewBits()
 	testz.Equal(t, 0, m.Len(), "init bit map len must be zero")
 
 	m.Add(1)
@@ -23,7 +23,7 @@ func TestBit_Add(t *testing.T) {
 }
 
 func TestBit_Contains(t *testing.T) {
-	m := NewBit()
+	m := NewBits()
 
 	tests := []struct {
 		add uint
@@ -34,6 +34,9 @@ func TestBit_Contains(t *testing.T) {
 		{0, 1, false},
 		{1, 1, true},
 		{1, 2, false},
+		{100, 100, true},
+		{922, 923, false},
+		{923, 922, true},
 		{10000000000, 10000000000, true},
 	}
 

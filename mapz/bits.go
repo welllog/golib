@@ -5,19 +5,20 @@ import (
 	"fmt"
 )
 
-type Bit struct {
+type Bits struct {
 	length int
 	set    []uint64
 }
 
-func NewBit() *Bit {
-	return &Bit{}
+func NewBits() *Bits {
+	return &Bits{}
 }
 
-func (b *Bit) Add(num uint) {
+func (b *Bits) Add(num uint) {
 	index, bit := num/64, num%64
-	for int(index) >= len(b.set) {
-		b.set = append(b.set, 0)
+	grow := int(index) - len(b.set)
+	if grow >= 0 {
+		b.set = append(b.set, make([]uint64, grow+1)...)
 	}
 	if b.set[index]&(1<<bit) == 0 {
 		b.set[index] |= 1 << bit
@@ -25,16 +26,16 @@ func (b *Bit) Add(num uint) {
 	}
 }
 
-func (b *Bit) Contains(num uint) bool {
+func (b *Bits) Contains(num uint) bool {
 	index, bit := num/64, num%64
 	return int(index) < len(b.set) && (b.set[index]&(1<<bit)) != 0
 }
 
-func (b *Bit) Len() int {
+func (b *Bits) Len() int {
 	return b.length
 }
 
-func (b *Bit) String() string {
+func (b *Bits) String() string {
 	var buf bytes.Buffer
 	buf.WriteByte('{')
 	for i, v := range b.set {

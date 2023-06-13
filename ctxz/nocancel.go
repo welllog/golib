@@ -1,0 +1,33 @@
+package ctxz
+
+import (
+	"context"
+	"time"
+)
+
+type noCancelContext struct {
+	ctx context.Context
+}
+
+func (n noCancelContext) Deadline() (deadline time.Time, ok bool) {
+	return time.Time{}, false
+}
+
+func (n noCancelContext) Done() <-chan struct{} {
+	return nil
+}
+
+func (n noCancelContext) Err() error {
+	return nil
+}
+
+func (n noCancelContext) Value(key any) any {
+	return n.ctx.Value(key)
+}
+
+func WithoutCancel(ctx context.Context) (valueOnlyContext context.Context) {
+	if ctx == nil {
+		panic("cannot create context from nil parent")
+	}
+	return noCancelContext{ctx}
+}
