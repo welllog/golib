@@ -1,10 +1,8 @@
 package strz
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/hex"
-	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -26,28 +24,40 @@ func HexDecode[T typez.StrOrBytes](s T) ([]byte, error) {
 	return dst[:n], err
 }
 
-// Base64StdEncode returns the base64 encoding of s
-func Base64StdEncode[T typez.StrOrBytes](s T) []byte {
-	dst := make([]byte, 0, base64.StdEncoding.EncodedLen(len(s)))
-	w := bytes.NewBuffer(dst)
-
-	r := NewReader(s)
-	e := base64.NewEncoder(base64.StdEncoding, w)
-
-	_, _ = io.Copy(e, r)
-	_ = e.Close()
-	return w.Bytes()
+// HexEncodeToString returns the hex encoding of s
+func HexEncodeToString[T typez.StrOrBytes](s T) string {
+	return UnsafeString(HexEncode(s))
 }
 
-// Base64StdDecode returns the bytes represented by the base64 s
-func Base64StdDecode[T typez.StrOrBytes](s T) ([]byte, error) {
-	dst := make([]byte, base64.StdEncoding.DecodedLen(len(s)))
+// HexDecodeToString returns the string represented by the hexadecimal s
+func HexDecodeToString[T typez.StrOrBytes](s T) (string, error) {
+	b, err := HexDecode(s)
+	return UnsafeString(b), err
+}
 
-	r := NewReader(s)
-	e := base64.NewDecoder(base64.StdEncoding, r)
+// Base64Encode returns the base64 encoding of s
+func Base64Encode[T typez.StrOrBytes](s T, enc *base64.Encoding) []byte {
+	dst := make([]byte, enc.EncodedLen(len(s)))
+	enc.Encode(dst, UnsafeStrOrBytesToBytes(s))
+	return dst
+}
 
-	n, err := e.Read(dst)
+// Base64Decode returns the bytes represented by the base64 s
+func Base64Decode[T typez.StrOrBytes](s T, enc *base64.Encoding) ([]byte, error) {
+	dst := make([]byte, enc.DecodedLen(len(s)))
+	n, err := enc.Decode(dst, UnsafeStrOrBytesToBytes(s))
 	return dst[:n], err
+}
+
+// Base64EncodeToString returns the base64 encoding of s
+func Base64EncodeToString[T typez.StrOrBytes](s T, enc *base64.Encoding) string {
+	return UnsafeString(Base64Encode(s, enc))
+}
+
+// Base64DecodeToString returns the string represented by the base64 s
+func Base64DecodeToString[T typez.StrOrBytes](s T, enc *base64.Encoding) (string, error) {
+	b, err := Base64Decode(s, enc)
+	return UnsafeString(b), err
 }
 
 // IPv4ToLong converts an IPv4 address to a uint32
@@ -108,4 +118,14 @@ func OctalDecode[T typez.StrOrBytes](s T) []byte {
 		b = append(b, s[i])
 	}
 	return b
+}
+
+// OctalEncodeToString returns the octal encoding of s
+func OctalEncodeToString[T typez.StrOrBytes](s T) string {
+	return UnsafeString(OctalEncode(s))
+}
+
+// OctalDecodeToString returns the string represented by the octal s
+func OctalDecodeToString[T typez.StrOrBytes](s T) string {
+	return UnsafeString(OctalDecode(s))
 }

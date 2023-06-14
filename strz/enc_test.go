@@ -83,7 +83,7 @@ func TestBase64StdEncode(t *testing.T) {
 	}
 
 	for _, v := range tests1 {
-		testz.Equal(t, v.e, Base64StdEncode(v.s), v.s, string(v.e), base64.StdEncoding.EncodeToString([]byte(v.s)))
+		testz.Equal(t, v.e, Base64Encode(v.s, base64.StdEncoding), v.s, string(v.e), base64.StdEncoding.EncodeToString([]byte(v.s)))
 	}
 
 	tests2 := []struct {
@@ -97,7 +97,7 @@ func TestBase64StdEncode(t *testing.T) {
 	}
 
 	for _, v := range tests2 {
-		testz.Equal(t, v.e, Base64StdEncode(v.s), v.s, string(v.e), base64.StdEncoding.EncodeToString(v.s))
+		testz.Equal(t, v.e, Base64Encode(v.s, base64.StdEncoding), v.s, string(v.e), base64.StdEncoding.EncodeToString(v.s))
 	}
 }
 
@@ -113,7 +113,7 @@ func TestBse64StdDecode(t *testing.T) {
 	}
 
 	for _, v := range tests1 {
-		b, err := Base64StdDecode(v.s)
+		b, err := Base64Decode(v.s, base64.StdEncoding)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -131,7 +131,7 @@ func TestBse64StdDecode(t *testing.T) {
 	}
 
 	for _, v := range tests2 {
-		b, err := Base64StdDecode(v.s)
+		b, err := Base64Decode(v.s, base64.StdEncoding)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -223,4 +223,69 @@ func TestOctalDecode(t *testing.T) {
 	for _, v := range tests2 {
 		testz.Equal(t, v.e, OctalDecode(v.s), string(v.s))
 	}
+}
+
+func BenchmarkHexEncode(b *testing.B) {
+	s1 := "hello world, i love programming, i coding in golang"
+	s2 := []byte("what will happen in the future, i don't know")
+
+	b.Run("std.HexEncode", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			dst1 := make([]byte, hex.EncodedLen(len(s1)))
+			hex.Encode(dst1, []byte(s1))
+
+			dst2 := make([]byte, hex.EncodedLen(len(s2)))
+			hex.Encode(dst2, s2)
+		}
+	})
+
+	b.Run("strz.HexEncode", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			HexEncode(s1)
+			HexEncode(s2)
+		}
+	})
+}
+
+func BenchmarkBase64Encode(b *testing.B) {
+	s1 := "68656c6c6f20776f726c642c2069206c6f76652070726f6772616d6d696e672c206920636f64696e6720696e20676f6c616e67"
+	s2 := []byte("68656c6c6f20776f726c642c2069206c6f76652070726f6772616d6d696e672c206920636f64696e6720696e20676f6c616e67")
+
+	b.Run("std.Base64Encode", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			dst1 := make([]byte, base64.StdEncoding.EncodedLen(len(s1)))
+			base64.StdEncoding.Encode(dst1, []byte(s1))
+
+			dst2 := make([]byte, base64.StdEncoding.EncodedLen(len(s2)))
+			base64.StdEncoding.Encode(dst2, s2)
+		}
+	})
+
+	b.Run("strz.Base64Encode", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			Base64Encode(s1, base64.StdEncoding)
+			Base64Encode(s2, base64.StdEncoding)
+		}
+	})
+}
+
+func BenchmarkHexEncodeToString(b *testing.B) {
+	s := "68656c6c6f20776f726c642c2069206c6f76652070726f6772616d6d696e672c206920636f64696e6720696e20676f6c616e67"
+	b.Run("std.HexEncodeToString", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			hex.EncodeToString([]byte(s))
+		}
+	})
+
+	b.Run("strz.HexEncodeToString", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			HexEncodeToString(s)
+		}
+	})
 }

@@ -33,6 +33,7 @@ func SetIdGeneratorStartTime(t time.Time) {
 	atomic.StorePointer(&defIdGen, unsafe.Pointer(NewIdGenerator(t, 18)))
 }
 
+// Id return a random id
 func Id() ID {
 	return (*IdGenerator)(atomic.LoadPointer(&defIdGen)).Generate()
 }

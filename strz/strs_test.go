@@ -7,18 +7,22 @@ import (
 	"github.com/welllog/golib/testz"
 )
 
-func TestString(t *testing.T) {
+func TestUnsafeString(t *testing.T) {
 	tests := []string{
 		"hello",
 		"world ",
 		"&%^@*#",
 	}
 	for _, tt := range tests {
-		testz.Equal(t, tt, String([]byte(tt)), "", tt)
+		testz.Equal(t, tt, UnsafeString([]byte(tt)), "", tt)
+	}
+
+	if UnsafeString(nil) != "" {
+		t.Errorf("UnsafeString(nil) != \"\"")
 	}
 }
 
-func TestBytes(t *testing.T) {
+func TestUnsafeBytes(t *testing.T) {
 	tests := []string{
 		"hello",
 		"world ",
@@ -26,7 +30,35 @@ func TestBytes(t *testing.T) {
 		"\"sds测试",
 	}
 	for _, tt := range tests {
-		testz.Equal(t, []byte(tt), Bytes(tt), "", tt)
+		testz.Equal(t, []byte(tt), UnsafeBytes(tt), "", tt)
+	}
+}
+
+func TestUnsafeStrOrBytesToBytes(t *testing.T) {
+	tests := []string{
+		"hello",
+		"world",
+		"👋,??, what happen",
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, []byte(tt), UnsafeStrOrBytesToBytes(tt), tt)
+	}
+
+	tests2 := [][]byte{
+		[]byte("hello"),
+		[]byte("world"),
+		[]byte("👋,??, what happen"),
+	}
+	for _, tt := range tests2 {
+		testz.Equal(t, tt, UnsafeStrOrBytesToBytes(tt), string(tt))
+	}
+
+	for i := range tests2 {
+		tests2[i] = append(tests2[i], 't', 'e', 's', 't')
+	}
+	for _, tt := range tests2 {
+		testz.Equal(t, tt, UnsafeStrOrBytesToBytes(tt), string(tt))
 	}
 }
 
@@ -292,4 +324,28 @@ func TestToString(t *testing.T) {
 	for _, tt := range tests {
 		testz.Equal(t, tt.b, ToString(tt.a))
 	}
+}
+
+func BenchmarkBytes(b *testing.B) {
+	s := "hello world, i love you"
+	b.Run("Bytes", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			UnsafeBytes(s)
+		}
+	})
+
+	b.Run("Bytes2", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			UnsafeBytes(s)
+		}
+	})
+
+	b.Run("std.bytes", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			_ = []byte(s)
+		}
+	})
 }

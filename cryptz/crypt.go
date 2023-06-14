@@ -21,11 +21,11 @@ const (
 	CBC_CRED_LEN = 48 // CBC_BLOCK_LEN(16)+CBC_KEY_LEN(32)
 )
 
-// 预先生成PrePadPatterns
+// PrePadPatterns
 var prePadPatterns [aes.BlockSize + 1][]byte
 
 // fix header
-var cbcfixedSaltHeader = []byte("Salted__")
+var fixedSaltHeader = []byte("Salted__")
 
 func init() {
 	for i := 0; i < len(prePadPatterns); i++ {
@@ -52,6 +52,15 @@ func init() {
 	*/
 }
 
+func EncryptLen[T typez.StrOrBytes](s T) int {
+	n := len(s) + aes.BlockSize
+	return n + aes.BlockSize - (n & (aes.BlockSize - 1))
+}
+
+func DecryptLen[T typez.StrOrBytes](s T) int {
+	return len(s) - aes.BlockSize
+}
+
 // EncryptToString openssl AES-256-CBC implementation
 func EncryptToString[T, E typez.StrOrBytes](plainText T, pass E) (string, error) {
 	enc, err := Encrypt(plainText, pass)
@@ -59,22 +68,18 @@ func EncryptToString[T, E typez.StrOrBytes](plainText T, pass E) (string, error)
 		return "", err
 	}
 
-	return strz.Base64EncodeToString(enc), nil
+	return strz.Base64EncodeToString(enc, base64.StdEncoding), nil
 }
 
 // DecryptToString openssl AES-256-CBC implementation
 func DecryptToString[E typez.StrOrBytes](encryptText string, pass E) (string, error) {
-	dst := make([]byte, base64.StdEncoding.DecodedLen(len(encryptText)))
-	n, err := base64.StdEncoding.Decode(dst, strz.Bytes(encryptText))
+	dst, err := strz.Base64Decode(encryptText, base64.StdEncoding)
 	if err != nil {
 		return "", err
 	}
 
-	dec, err := Decrypt(dst[:n], pass)
-	if err != nil {
-		return "", err
-	}
-	return strz.String(dec), nil
+	b, err := Decrypt(dst, pass)
+	return string(b), err
 }
 
 // Encrypt encrypts plainText with pass
@@ -93,7 +98,7 @@ func Encrypt[T, E typez.StrOrBytes](plainText T, pass E) ([]byte, error) {
 		|Salted__(8 byte)|salt(8 byte)|plaintext|
 	*/
 	data := make([]byte, len(plainText)+aes.BlockSize /*16*/)
-	copy(data[0:], cbcfixedSaltHeader)
+	copy(data[0:], fixedSaltHeader)
 	copy(data[8:], salt[:])
 	copy(data[aes.BlockSize:], plainText)
 
@@ -110,17 +115,24 @@ func Encrypt[T, E typez.StrOrBytes](plainText T, pass E) ([]byte, error) {
 }
 
 // Decrypt decrypts enc with pass
-func Decrypt[E typez.StrOrBytes](enc []byte, pass E) ([]byte, error) {
+// The enc will be reused as decrypted result
+func Decrypt[T, E typez.StrOrBytes](encryptText T, pass E) ([]byte, error) {
 	/*
 		|Salted__(8 byte)|salt(8 byte)|encrypt_text|
 	*/
-	if len(enc) < aes.BlockSize {
+	if len(encryptText) < aes.BlockSize {
 		return nil, errors.New("length illegal")
 	}
-	saltHeader := enc[:aes.BlockSize]
+
+	if len(encryptText)&15 != 0 {
+		return nil, fmt.Errorf("encrypt text length illegal: len=%d", len(encryptText))
+	}
+
+	bts := strz.UnsafeStrOrBytesToBytes(encryptText)
+	saltHeader := bts[:aes.BlockSize]
 	fixedSalt := saltHeader[:8]
 	for i := 0; i < 8; i++ {
-		if fixedSalt[i] != cbcfixedSaltHeader[i] {
+		if fixedSalt[i] != fixedSaltHeader[i] {
 			return nil, errors.New("check cbc fixed header error")
 		}
 	}
@@ -131,17 +143,16 @@ func Decrypt[E typez.StrOrBytes](enc []byte, pass E) ([]byte, error) {
 	key := cred[:CBC_KEY_LEN] // 32 bytes, 256 / 8
 	iv := cred[CBC_KEY_LEN:]  // 16 bytes, same as block size
 
-	if len(enc)&15 != 0 {
-		return nil, fmt.Errorf("encrypt text length illegal: len=%d", len(enc))
-	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("NewCipher error: %w", err)
 	}
-	cbc := cipher.NewCBCDecrypter(block, iv)
-	cbc.CryptBlocks(enc[aes.BlockSize:], enc[aes.BlockSize:])
 
-	return pkcs7UnPadding(enc[aes.BlockSize:])
+	dst := make([]byte, len(encryptText)-aes.BlockSize)
+	cbc := cipher.NewCBCDecrypter(block, iv)
+	cbc.CryptBlocks(dst, bts[aes.BlockSize:])
+
+	return pkcs7UnPadding(dst)
 }
 
 // EncryptStreamTo encrypts stream to out with pass
@@ -210,43 +221,86 @@ func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, pass E
 }
 
 func pkcs7Padding(data []byte) []byte {
-	length := len(data) & 15 // len(data) % 16
-	if length == 0 {
-		return data
-	}
-	padlen := 16 - length
-	return append(data, prePadPatterns[padlen]...)
+	paddingLen := 16 - (len(data) & 15)
+	return append(data, prePadPatterns[paddingLen]...)
 }
 
 func pkcs7UnPadding(data []byte) ([]byte, error) {
 	if len(data)&15 != 0 || len(data) == 0 {
 		return nil, fmt.Errorf("invalid data len %d", len(data))
 	}
-	padlen := int(data[len(data)-1])
-	if padlen > aes.BlockSize || padlen == 0 {
-		return nil, errors.New("param illegal")
+	paddingLen := int(data[len(data)-1])
+	if paddingLen > aes.BlockSize || paddingLen <= 0 {
+		return nil, errors.New("invalid padding length")
 	}
-	if !bytes.Equal(prePadPatterns[padlen], data[len(data)-padlen:]) {
-		return nil, errors.New("param illegal")
+	if !bytes.Equal(prePadPatterns[paddingLen], data[len(data)-paddingLen:]) {
+		return nil, errors.New("invalid padding bytes")
 	}
-	return data[:len(data)-padlen], nil
+	return data[:len(data)-paddingLen], nil
 }
 
-func PKCS5Padding(ciphertext []byte) []byte {
-	return PKCS7Padding(ciphertext, 8)
+// PKCS5Padding adds padding to the input data according to the PKCS#5 standard
+func PKCS5Padding(data []byte) ([]byte, error) {
+	return PKCS7Padding(data, 8)
 }
 
-func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
-	padding := blockSize - len(ciphertext)%blockSize
-	// padText := bytes.Repeat([]byte{byte(padding)}, padding)
-	// return append(ciphertext, padText...)
-	return append(ciphertext, prePadPatterns[padding]...)
+// PKCS5UnPadding removes padding from the input data according to the PKCS#5 standard
+func PKCS5UnPadding(data []byte) ([]byte, error) {
+	return PKCS7UnPadding(data, 8)
 }
 
-func PKCSUnPadding(data []byte) []byte {
-	length := len(data)
-	paddingNum := int(data[length-1])
-	return data[:(length - paddingNum)]
+// PKCS7Padding adds padding to the input data according to the PKCS#7 standard
+func PKCS7Padding(data []byte, blockSize int) ([]byte, error) {
+	// Check if input parameters are valid
+	if len(data) == 0 {
+		return nil, errors.New("input data cannot be empty")
+	}
+
+	if blockSize <= 0 {
+		return nil, errors.New("block size must be a positive integer")
+	}
+
+	// Calculate the padding length
+	paddingLen := blockSize - (len(data) % blockSize)
+
+	// Create the padding bytes
+	paddingBytes := bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)
+
+	// Append the padding bytes to the input data
+	return append(data, paddingBytes...), nil
+}
+
+// PKCS7UnPadding removes padding from the input data according to the PKCS#7 standard
+func PKCS7UnPadding(data []byte, blockSize int) ([]byte, error) {
+	// Check if input parameters are valid
+	if len(data) == 0 {
+		return nil, errors.New("input data cannot be empty")
+	}
+
+	if blockSize <= 0 {
+		return nil, errors.New("block size must be a positive integer")
+	}
+
+	if len(data)%blockSize != 0 {
+		return nil, errors.New("input data length must be a multiple of block size")
+	}
+
+	// Get the padding length
+	paddingLen := int(data[len(data)-1])
+
+	// Check if the padding length is valid
+	if paddingLen <= 0 || paddingLen > blockSize {
+		return nil, errors.New("invalid padding length")
+	}
+
+	// Check if the padding bytes are correct
+	paddingBytes := bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)
+	if !bytes.Equal(data[len(data)-paddingLen:], paddingBytes) {
+		return nil, errors.New("invalid padding bytes")
+	}
+
+	// Remove the padding
+	return data[:len(data)-paddingLen], nil
 }
 
 func fillSaltAndCred[E typez.StrOrBytes](salt, cred []byte, pass E) error {

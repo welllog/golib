@@ -9,55 +9,83 @@ import (
 	"io"
 
 	"github.com/welllog/golib/strz"
+	"github.com/welllog/golib/typez"
 )
 
-func Md5(s string) string {
-	h := md5.Sum(strz.Bytes(s))
-	return strz.HexEncodeToString(h[:])
+// Md5 returns the MD5 checksum of the data.
+func Md5[T typez.StrOrBytes](s T) []byte {
+	h := md5.Sum(strz.UnsafeStrOrBytesToBytes(s))
+	return strz.HexEncode(h[:])
 }
 
-func Sha1(s string) string {
-	h := sha1.Sum(strz.Bytes(s))
-	return strz.HexEncodeToString(h[:])
+// Md5ToString returns the MD5 checksum of the data as a string.
+func Md5ToString[T typez.StrOrBytes](s T) string {
+	return strz.UnsafeString(Md5(s))
 }
 
-func Sha256(s string) string {
-	h := sha256.Sum256(strz.Bytes(s))
-	return strz.HexEncodeToString(h[:])
+// Sha1 returns the SHA-1 checksum of the data.
+func Sha1[T typez.StrOrBytes](s T) []byte {
+	h := sha1.Sum(strz.UnsafeStrOrBytesToBytes(s))
+	return strz.HexEncode(h[:])
 }
 
-func Hmac(key, data string, h func() hash.Hash) string {
-	hh := hmac.New(h, strz.Bytes(key))
-	hh.Write(strz.Bytes(data))
-	return strz.HexEncodeToString(hh.Sum(nil))
+// Sha1ToString returns the SHA-1 checksum of the data as a string.
+func Sha1ToString[T typez.StrOrBytes](s T) string {
+	return strz.UnsafeString(Sha1(s))
 }
 
-func Md5Stream(s io.Reader) (string, error) {
+// Sha256 returns the SHA-256 checksum of the data.
+func Sha256[T typez.StrOrBytes](s T) []byte {
+	h := sha256.Sum256(strz.UnsafeStrOrBytesToBytes(s))
+	return strz.HexEncode(h[:])
+}
+
+// Sha256ToString returns the SHA-256 checksum of the data as a string.
+func Sha256ToString[T typez.StrOrBytes](s T) string {
+	return strz.UnsafeString(Sha256(s))
+}
+
+// Hmac returns the HMAC-HASH of the data.
+func Hmac[T, E typez.StrOrBytes](key T, data E, h func() hash.Hash) []byte {
+	hh := hmac.New(h, strz.UnsafeStrOrBytesToBytes(key))
+	hh.Write(strz.UnsafeStrOrBytesToBytes(data))
+	return strz.HexEncode(hh.Sum(nil))
+}
+
+// HmacToString returns the HMAC-HASH of the data as a string.
+func HmacToString[T, E typez.StrOrBytes](key T, data E, h func() hash.Hash) string {
+	return strz.UnsafeString(Hmac(key, data, h))
+}
+
+// Md5Stream returns the MD5 checksum of the data.
+func Md5Stream(s io.Reader) ([]byte, error) {
 	h := md5.New()
 	_, err := io.Copy(h, s)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return strz.HexEncodeToString(h.Sum(nil)), nil
+	return strz.HexEncode(h.Sum(nil)), nil
 }
 
-func Sha1Stream(s io.Reader) (string, error) {
+// Sha1Stream returns the SHA-1 checksum of the data.
+func Sha1Stream(s io.Reader) ([]byte, error) {
 	h := sha1.New()
 	_, err := io.Copy(h, s)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return strz.HexEncodeToString(h.Sum(nil)), nil
+	return strz.HexEncode(h.Sum(nil)), nil
 }
 
-func Sha256Stream(s io.Reader) (string, error) {
+// Sha256Stream returns the SHA-256 checksum of the data.
+func Sha256Stream(s io.Reader) ([]byte, error) {
 	h := sha256.New()
 	_, err := io.Copy(h, s)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return strz.HexEncodeToString(h.Sum(nil)), nil
+	return strz.HexEncode(h.Sum(nil)), nil
 }

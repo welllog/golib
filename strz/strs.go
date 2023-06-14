@@ -6,20 +6,32 @@ import (
 	"strings"
 	"unicode/utf8"
 	"unsafe"
+
+	"github.com/welllog/golib/typez"
 )
 
-// String converts byte slice to string.
-func String(b []byte) string {
+// UnsafeString converts byte slice to string.
+func UnsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-// Bytes converts string to byte slice. maybe safe risk
-func Bytes(s string) []byte {
+// UnsafeBytes converts string to byte slice. maybe safe risk
+func UnsafeBytes(s string) []byte {
 	return *(*[]byte)(unsafe.Pointer(
 		&struct {
 			string
 			Cap int
 		}{s, len(s)},
+	))
+}
+
+// UnsafeStrOrBytesToBytes converts string or byte slice to byte slice. maybe safe risk
+func UnsafeStrOrBytesToBytes[T typez.StrOrBytes](s T) []byte {
+	return *(*[]byte)(unsafe.Pointer(
+		&struct {
+			string
+			Cap int
+		}{*(*string)(unsafe.Pointer(&s)), len(s)},
 	))
 }
 
