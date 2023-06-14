@@ -14,12 +14,13 @@ const (
 )
 
 // Max returns the maximum value in a slice of numbers.
-func Max[T typez.Number](n ...T) T {
+func Max[T typez.Ordered](n ...T) T {
+	var max T
 	if len(n) == 0 {
-		return 0
+		return max
 	}
 
-	max := n[0]
+	max = n[0]
 	for _, v := range n[1:] {
 		if v > max {
 			max = v
@@ -29,12 +30,13 @@ func Max[T typez.Number](n ...T) T {
 }
 
 // Min returns the minimum value in a slice of numbers.
-func Min[T typez.Number](n ...T) T {
+func Min[T typez.Ordered](n ...T) T {
+	var min T
 	if len(n) == 0 {
-		return 0
+		return min
 	}
 
-	min := n[0]
+	min = n[0]
 	for _, v := range n[1:] {
 		if v < min {
 			min = v

@@ -29,6 +29,14 @@ func Equal(t *testing.T, expected, actual any, msgAndArgs ...any) {
 	}
 }
 
+func Nil(t *testing.T, actual any, msgAndArgs ...any) {
+	t.Helper()
+
+	if actual != nil {
+		requireLog(t, nil, actual, msgAndArgs)
+	}
+}
+
 func requireLog(t *testing.T, expected, actual any, msgAndArgs []any) {
 	t.Helper()
 	errLog(t, expected, actual, "expected: %v, actual: %v;", msgAndArgs)

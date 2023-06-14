@@ -137,6 +137,23 @@ func TestRev(t *testing.T) {
 	}
 }
 
+func TestLen(t *testing.T) {
+	tests := []struct {
+		o string
+		n int
+	}{
+		{"test", 4},
+		{"What", 4},
+		{"123&^!", 6},
+		{"", 0},
+		{"你好", 2},
+		{"😀", 1},
+	}
+	for _, tt := range tests {
+		testz.Equal(t, tt.n, Len(tt.o), "", tt.o)
+	}
+}
+
 func TestSub(t *testing.T) {
 	tests := []struct {
 		str    string
@@ -251,5 +268,28 @@ func TestCamelCaseToSnake(t *testing.T) {
 	}
 	for _, tt := range tests {
 		testz.Equal(t, tt.a, CamelCaseToSnake(tt.b))
+	}
+}
+
+func TestToString(t *testing.T) {
+	tests := []struct {
+		a interface{}
+		b string
+	}{
+		{1, "1"},
+		{1.1, "1.1"},
+		{true, "true"},
+		{false, "false"},
+		{nil, ""},
+		{[]byte("test"), "test"},
+		{[]byte(""), ""},
+		{[]byte(nil), ""},
+		{[]int{1, 2, 3}, "[1 2 3]"},
+		{[]int{}, "[]"},
+		{map[string]int{"a": 1, "b": 2}, "map[a:1 b:2]"},
+		{map[string]int{}, "map[]"},
+	}
+	for _, tt := range tests {
+		testz.Equal(t, tt.b, ToString(tt.a))
 	}
 }
