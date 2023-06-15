@@ -1,3 +1,7 @@
+<p align="center">
+    <br> English | <a href="README-CN.md">中文</a>
+</p>
+
 # golib
 a tool library based on Go standard library, designed for performance, flexibility and simplicity, and enhanced code reuse by introducing generics.
 

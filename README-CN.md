@@ -1,3 +1,7 @@
+<p align="center">
+    <br> <a href="README.md">English</a> | 中文
+</p>
+
 # golib
 一个基于Go标准库的工具包，以性能、灵活、简洁为设计目标, 通过引入泛型来加强代码复用。
 
