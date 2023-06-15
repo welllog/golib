@@ -2,6 +2,7 @@ package slicez
 
 // Diff compares slices s1 and s2, puts elements from s1 that do not exist in s2 into dst, and returns it.
 func Diff[T comparable](dst, s1, s2 []T) []T {
+	dst = dst[:0]
 	if len(s1) == 0 {
 		return dst
 	}
@@ -47,6 +48,7 @@ func DiffInPlaceFirst[T comparable](s1, s2 []T) []T {
 
 // Intersect compares slices s1 and s2, puts elements from s1 that are also present in s2 into dst, and returns it.
 func Intersect[T comparable](dst, s1, s2 []T) []T {
+	dst = dst[:0]
 	if len(s1) == 0 || len(s2) == 0 {
 		return dst
 	}
@@ -88,6 +90,7 @@ func IntersectInPlaceFirst[T comparable](s1, s2 []T) []T {
 
 // Unique compares slice s, puts unique elements into dst, and returns it.
 func Unique[T comparable](dst, s []T) []T {
+	dst = dst[:0]
 	if len(s) == 0 {
 		return dst
 	}
@@ -126,6 +129,7 @@ func UniqueInPlace[T comparable](s []T) []T {
 
 // Filter puts elements from s that satisfy predicate into dst, and returns it.
 func Filter[T any](dst, s []T, predicate func(T) bool) []T {
+	dst = dst[:0]
 	for _, v := range s {
 		if predicate(v) {
 			dst = append(dst, v)

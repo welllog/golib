@@ -71,6 +71,24 @@ func TestHexDecode(t *testing.T) {
 	}
 }
 
+func TestHexDecodeInPlace(t *testing.T) {
+	tests := []struct {
+		s []byte
+		e []byte
+	}{
+		{[]byte(`68656c6c6f`), []byte(`hello`)},
+		{[]byte(`68656c6c6f20776f726c64`), []byte(`hello world`)},
+		{[]byte(`68656c6c6f0a776f726c64`), []byte("hello\nworld")},
+		{[]byte(`f09f918befbc8ce4b896e7958cefbc8c77656c636f6d65`), []byte("👋，世界，welcome")},
+	}
+
+	for _, v := range tests {
+		r, err := HexDecodeInPlace(v.s)
+		testz.Nil(t, err)
+		testz.Equal(t, v.e, v.s[:r], string(v.e))
+	}
+}
+
 func TestBase64StdEncode(t *testing.T) {
 	tests1 := []struct {
 		s string
@@ -222,6 +240,22 @@ func TestOctalDecode(t *testing.T) {
 	}
 	for _, v := range tests2 {
 		testz.Equal(t, v.e, OctalDecode(v.s), string(v.s))
+	}
+}
+
+func TestOctalDecodeInPlace(t *testing.T) {
+	tests := []struct {
+		s []byte
+		e []byte
+	}{
+		{[]byte(`\150\145\154\154\157`), []byte("hello")},
+		{[]byte(`\150\145\154\154\157\040\167\157\162\154\144`), []byte("hello world")},
+		{[]byte(`\150\145\154\154\157\012\167\157\162\154\144`), []byte("hello\nworld")},
+		{[]byte(`\360\237\221\213\357\274\214\344\270\226\347\225\214\357\274\214\167\145\154\143\157\155\145`), []byte("👋，世界，welcome")},
+	}
+	for _, v := range tests {
+		n := OctalDecodeInPlace(v.s)
+		testz.Equal(t, v.e, v.s[:n], string(v.e))
 	}
 }
 

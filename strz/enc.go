@@ -24,6 +24,11 @@ func HexDecode[T typez.StrOrBytes](s T) ([]byte, error) {
 	return dst[:n], err
 }
 
+// HexDecodeInPlace decodes the hexadecimal s in place
+func HexDecodeInPlace(b []byte) (int, error) {
+	return hex.Decode(b, b)
+}
+
 // HexEncodeToString returns the hex encoding of s
 func HexEncodeToString[T typez.StrOrBytes](s T) string {
 	return UnsafeString(HexEncode(s))
@@ -77,47 +82,85 @@ func LongToIPv4(long uint32) string {
 
 // OctalEncode returns the octal encoding of s
 func OctalEncode[T typez.StrOrBytes](s T) []byte {
-	b := make([]byte, 0, len(s)*2)
+	b := make([]byte, len(s)*4)
+	j := 0
+	t := make([]byte, 0, 3)
+
 	for i := 0; i < len(s); i++ {
-		b = append(b, '\\')
+		b[j] = '\\'
 
-		l := len(b)
-		b = strconv.AppendInt(b, int64(s[i]), 8)
+		t = strconv.AppendInt(t, int64(s[i]), 8)
 
-		switch len(b) - l {
+		switch len(t) {
 		case 1:
-			d := b[len(b)-1]
-			b = append(b[:l], 48, 48, d)
+			b[j+1] = 48
+			b[j+2] = 48
+			b[j+3] = t[0]
 		case 2:
-			buf := make([]byte, 2)
-			copy(buf, b[len(b)-2:])
-			b = append(b[:l], 48, buf[0], buf[1])
+			b[j+1] = 48
+			b[j+2] = t[0]
+			b[j+3] = t[1]
+		case 3:
+			b[j+1] = t[0]
+			b[j+2] = t[1]
+			b[j+3] = t[2]
 		default:
 		}
+		j += 4
+		t = t[:0]
 	}
 	return b
 }
 
 // OctalDecode returns the bytes represented by the octal s
 func OctalDecode[T typez.StrOrBytes](s T) []byte {
-	b := make([]byte, 0, len(s))
+	b := make([]byte, len(s))
+	j := 0
 	for i := 0; i < len(s); i++ {
 		if s[i] == '\\' {
 			if i+1 < len(s) && s[i+1] == '\\' {
-				b = append(b, '\\')
+				b[j] = '\\'
+				j++
 				i++
 				continue
 			}
 			if i+3 < len(s) && s[i+1] >= '0' && s[i+1] <= '7' && s[i+2] >= '0' && s[i+2] <= '7' && s[i+3] >= '0' && s[i+3] <= '7' {
 				n, _ := ParseUint(s[i+1:i+4], 8, 8)
-				b = append(b, byte(n))
+				b[j] = byte(n)
+				j++
 				i += 3
 				continue
 			}
 		}
-		b = append(b, s[i])
+		b[j] = s[i]
+		j++
 	}
-	return b
+	return b[:j]
+}
+
+// OctalDecodeInPlace decodes the octal s in place
+func OctalDecodeInPlace(b []byte) int {
+	j := 0
+	for i := 0; i < len(b); i++ {
+		if b[i] == '\\' {
+			if i+1 < len(b) && b[i+1] == '\\' {
+				b[j] = '\\'
+				j++
+				i++
+				continue
+			}
+			if i+3 < len(b) && b[i+1] >= '0' && b[i+1] <= '7' && b[i+2] >= '0' && b[i+2] <= '7' && b[i+3] >= '0' && b[i+3] <= '7' {
+				n, _ := ParseUint(b[i+1:i+4], 8, 8)
+				b[j] = byte(n)
+				j++
+				i += 3
+				continue
+			}
+		}
+		b[j] = b[i]
+		j++
+	}
+	return j
 }
 
 // OctalEncodeToString returns the octal encoding of s

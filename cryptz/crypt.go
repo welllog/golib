@@ -21,11 +21,14 @@ const (
 	CBC_CRED_LEN = 48 // CBC_BLOCK_LEN(16)+CBC_KEY_LEN(32)
 )
 
-// PrePadPatterns
-var prePadPatterns [aes.BlockSize + 1][]byte
-
-// fix header
-var fixedSaltHeader = []byte("Salted__")
+var (
+	// PrePadPatterns
+	prePadPatterns [aes.BlockSize + 1][]byte
+	// fixedSaltHeader
+	fixedSaltHeader = []byte("Salted__")
+	// blockSizeMask
+	blockSizeMask = aes.BlockSize - 1
+)
 
 func init() {
 	for i := 0; i < len(prePadPatterns); i++ {
@@ -54,87 +57,88 @@ func init() {
 
 func EncryptLen[T typez.StrOrBytes](s T) int {
 	n := len(s) + aes.BlockSize
-	return n + aes.BlockSize - (n & (aes.BlockSize - 1))
+	return n + aes.BlockSize - (n & blockSizeMask)
 }
 
 func DecryptLen[T typez.StrOrBytes](s T) int {
 	return len(s) - aes.BlockSize
 }
 
-// EncryptToString openssl AES-256-CBC implementation
-func EncryptToString[T, E typez.StrOrBytes](plainText T, pass E) (string, error) {
-	enc, err := Encrypt(plainText, pass)
+// EncryptToBase64String openssl AES-256-CBC implementation
+func EncryptToBase64String[T, E typez.StrOrBytes](plainText T, pass E) (string, error) {
+	dst := make([]byte, EncryptLen(plainText))
+	err := Encrypt(dst, plainText, pass)
 	if err != nil {
 		return "", err
 	}
 
-	return strz.Base64EncodeToString(enc, base64.StdEncoding), nil
+	return strz.Base64EncodeToString(dst, base64.StdEncoding), nil
 }
 
-// DecryptToString openssl AES-256-CBC implementation
-func DecryptToString[E typez.StrOrBytes](encryptText string, pass E) (string, error) {
-	dst, err := strz.Base64Decode(encryptText, base64.StdEncoding)
+// DecryptBase64ToString openssl AES-256-CBC implementation
+func DecryptBase64ToString[E typez.StrOrBytes](encryptText string, pass E) (string, error) {
+	src, err := strz.Base64Decode(encryptText, base64.StdEncoding)
 	if err != nil {
 		return "", err
 	}
 
-	b, err := Decrypt(dst, pass)
-	return string(b), err
+	if len(src) < aes.BlockSize {
+		return "", errors.New("encrypt text length illegal")
+	}
+
+	// reuse src
+	dst := src[aes.BlockSize:]
+	n, err := Decrypt(dst, src, pass)
+	return strz.UnsafeString(dst[:n]), err
 }
 
 // Encrypt encrypts plainText with pass
-func Encrypt[T, E typez.StrOrBytes](plainText T, pass E) ([]byte, error) {
+func Encrypt[T, E typez.StrOrBytes](dst []byte, plainText T, pass E) error {
 	var salt [CBC_SALT_LEN]byte
 	var cred [CBC_CRED_LEN]byte
 	err := fillSaltAndCred(salt[:], cred[:], pass)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	key := cred[:CBC_KEY_LEN] // 32 bytes, 256 / 8
 	iv := cred[CBC_KEY_LEN:]  // 16 bytes, same as block size
 
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return fmt.Errorf("NewCipher error: %w", err)
+	}
+
 	/*
 		|Salted__(8 byte)|salt(8 byte)|plaintext|
 	*/
-	data := make([]byte, len(plainText)+aes.BlockSize /*16*/)
-	copy(data[0:], fixedSaltHeader)
-	copy(data[8:], salt[:])
-	copy(data[aes.BlockSize:], plainText)
+	dataLen := len(plainText) + aes.BlockSize
+	copy(dst[0:], fixedSaltHeader)
+	copy(dst[8:], salt[:])
+	copy(dst[aes.BlockSize:], plainText)
 
-	padded := pkcs7Padding(data)
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, fmt.Errorf("NewCipher error: %w", err)
-	}
+	paddingLen := aes.BlockSize - (dataLen & blockSizeMask)
+	copy(dst[dataLen:], prePadPatterns[paddingLen])
+
 	cbc := cipher.NewCBCEncrypter(block, iv)
-
 	// encrypt from plaintext position to end
-	cbc.CryptBlocks(padded[aes.BlockSize:], padded[aes.BlockSize:])
-	return padded, nil
+	cbc.CryptBlocks(dst[aes.BlockSize:], dst[aes.BlockSize:])
+	return nil
 }
 
 // Decrypt decrypts enc with pass
-// The enc will be reused as decrypted result
-func Decrypt[T, E typez.StrOrBytes](encryptText T, pass E) ([]byte, error) {
+func Decrypt[T, E typez.StrOrBytes](dst []byte, encryptText T, pass E) (int, error) {
 	/*
 		|Salted__(8 byte)|salt(8 byte)|encrypt_text|
 	*/
-	if len(encryptText) < aes.BlockSize {
-		return nil, errors.New("length illegal")
+	if len(encryptText) < aes.BlockSize || len(encryptText)&blockSizeMask != 0 {
+		return 0, fmt.Errorf("encrypt text length illegal: len=%d", len(encryptText))
 	}
 
-	if len(encryptText)&15 != 0 {
-		return nil, fmt.Errorf("encrypt text length illegal: len=%d", len(encryptText))
-	}
-
-	bts := strz.UnsafeStrOrBytesToBytes(encryptText)
-	saltHeader := bts[:aes.BlockSize]
-	fixedSalt := saltHeader[:8]
-	for i := 0; i < 8; i++ {
-		if fixedSalt[i] != fixedSaltHeader[i] {
-			return nil, errors.New("check cbc fixed header error")
-		}
+	b := strz.UnsafeStrOrBytesToBytes(encryptText)
+	saltHeader := b[:aes.BlockSize]
+	if !bytes.Equal(saltHeader[:8], fixedSaltHeader) {
+		return 0, errors.New("check cbc fixed header error")
 	}
 
 	var cred [CBC_CRED_LEN]byte
@@ -145,13 +149,11 @@ func Decrypt[T, E typez.StrOrBytes](encryptText T, pass E) ([]byte, error) {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("NewCipher error: %w", err)
+		return 0, fmt.Errorf("NewCipher error: %w", err)
 	}
 
-	dst := make([]byte, len(encryptText)-aes.BlockSize)
 	cbc := cipher.NewCBCDecrypter(block, iv)
-	cbc.CryptBlocks(dst, bts[aes.BlockSize:])
-
+	cbc.CryptBlocks(dst, b[aes.BlockSize:])
 	return pkcs7UnPadding(dst)
 }
 
@@ -167,14 +169,19 @@ func EncryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, pass E
 	key := cred[:CBC_KEY_LEN] // 32 bytes, 256 / 8
 	iv := cred[CBC_KEY_LEN:]
 
-	_, err = out.Write(salt[:])
-	if err != nil {
-		return fmt.Errorf("write salt error: %w", err)
-	}
-
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return fmt.Errorf("NewCipher error: %w", err)
+	}
+
+	_, err = out.Write(fixedSaltHeader)
+	if err != nil {
+		return fmt.Errorf("write fixed salt header error: %w", err)
+	}
+
+	_, err = out.Write(salt[:])
+	if err != nil {
+		return fmt.Errorf("write salt error: %w", err)
 	}
 
 	encStream := cipher.NewCFBEncrypter(block, iv)
@@ -189,18 +196,20 @@ func EncryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, pass E
 
 // DecryptStreamTo decrypts stream to out with pass
 func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, pass E) error {
-	var salt [CBC_SALT_LEN]byte
-	n, err := stream.Read(salt[:])
+	saltHeader := make([]byte, aes.BlockSize)
+
+	n, err := stream.Read(saltHeader)
 	if err != nil {
-		return fmt.Errorf("read salt error: %w", err)
+		return fmt.Errorf("read header error: %w", err)
 	}
 
-	if n != CBC_SALT_LEN {
-		return fmt.Errorf("read salt less error: n=%d", n)
+	if n != aes.BlockSize {
+		return fmt.Errorf("read header less error: n=%d", n)
 	}
 
 	var cred [CBC_CRED_LEN]byte
-	fillCred(cred[:], salt[:], pass)
+	fillCred(cred[:], saltHeader[8:], pass)
+
 	key := cred[:CBC_KEY_LEN] // 32 bytes, 256 / 8
 	iv := cred[CBC_KEY_LEN:]
 
@@ -220,23 +229,15 @@ func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, pass E
 	return nil
 }
 
-func pkcs7Padding(data []byte) []byte {
-	paddingLen := 16 - (len(data) & 15)
-	return append(data, prePadPatterns[paddingLen]...)
-}
-
-func pkcs7UnPadding(data []byte) ([]byte, error) {
-	if len(data)&15 != 0 || len(data) == 0 {
-		return nil, fmt.Errorf("invalid data len %d", len(data))
-	}
+func pkcs7UnPadding(data []byte) (int, error) {
 	paddingLen := int(data[len(data)-1])
 	if paddingLen > aes.BlockSize || paddingLen <= 0 {
-		return nil, errors.New("invalid padding length")
+		return 0, errors.New("invalid padding length")
 	}
 	if !bytes.Equal(prePadPatterns[paddingLen], data[len(data)-paddingLen:]) {
-		return nil, errors.New("invalid padding bytes")
+		return 0, errors.New("invalid padding bytes")
 	}
-	return data[:len(data)-paddingLen], nil
+	return len(data) - paddingLen, nil
 }
 
 // PKCS5Padding adds padding to the input data according to the PKCS#5 standard

@@ -8,7 +8,7 @@ import (
 	"github.com/welllog/golib/testz"
 )
 
-func TestEncryptToString(t *testing.T) {
+func TestEncryptToBase64String(t *testing.T) {
 	tests1 := []struct {
 		text string
 		pass string
@@ -17,12 +17,12 @@ func TestEncryptToString(t *testing.T) {
 		{"👋，世界", "测试"},
 	}
 	for _, tt := range tests1 {
-		enc, err := EncryptToString(tt.text, tt.pass)
+		enc, err := EncryptToBase64String(tt.text, tt.pass)
 		if err != nil {
 			t.Fatalf("EncryptToString(%s, %s) error: %s", tt.text, tt.pass, err)
 		}
 
-		dec, err := DecryptToString(enc, tt.pass)
+		dec, err := DecryptBase64ToString(enc, tt.pass)
 		if err != nil {
 			t.Fatalf("DecryptFromString(%s, %s) error: %s", enc, tt.pass, err)
 		}
@@ -40,12 +40,12 @@ func TestEncryptToString(t *testing.T) {
 		{[]byte("??，世界"), []byte("测试")},
 	}
 	for _, tt := range tests2 {
-		enc, err := EncryptToString(tt.text, tt.pass)
+		enc, err := EncryptToBase64String(tt.text, tt.pass)
 		if err != nil {
 			t.Fatalf("Encrypt(%s, %s) error: %s", tt.text, tt.pass, err)
 		}
 
-		dec, err := DecryptToString(enc, tt.pass)
+		dec, err := DecryptBase64ToString(enc, tt.pass)
 		if err != nil {
 			t.Fatalf("Decrypt(%s, %s) error: %s", enc, tt.pass, err)
 		}
@@ -63,12 +63,12 @@ func TestEncryptToString(t *testing.T) {
 		{"??，世界", []byte("测试")},
 	}
 	for _, tt := range tests3 {
-		enc, err := EncryptToString([]byte(tt.text), tt.pass)
+		enc, err := EncryptToBase64String([]byte(tt.text), tt.pass)
 		if err != nil {
 			t.Fatalf("Encrypt(%s, %s) error: %s", tt.text, tt.pass, err)
 		}
 
-		dec, err := DecryptToString(enc, tt.pass)
+		dec, err := DecryptBase64ToString(enc, tt.pass)
 		if err != nil {
 			t.Fatalf("Decrypt(%s, %s) error: %s", enc, tt.pass, err)
 		}
@@ -87,12 +87,12 @@ func TestEncryptToString(t *testing.T) {
 		{[]byte("this is no pass"), ""},
 	}
 	for _, tt := range tests4 {
-		enc, err := EncryptToString(tt.text, []byte(tt.pass))
+		enc, err := EncryptToBase64String(tt.text, []byte(tt.pass))
 		if err != nil {
 			t.Fatalf("Encrypt(%s, %s) error: %s", tt.text, tt.pass, err)
 		}
 
-		dec, err := DecryptToString(enc, []byte(tt.pass))
+		dec, err := DecryptBase64ToString(enc, []byte(tt.pass))
 		if err != nil {
 			t.Fatalf("Decrypt(%s, %s) error: %s", enc, tt.pass, err)
 		}

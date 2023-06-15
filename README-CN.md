@@ -6,7 +6,7 @@
 * ``slicez`` 切片相关函数
 * ``strz`` 字符串相关函数，能够处理多种utf8编码的字符串
 * ``hashz`` hash相关函数
-* ``cryptz`` 加解密相关函数  ----?
+* ``cryptz`` 加解密相关函数
 * ``randz`` 随机相关函数
 * ``mapz`` map相关函数    ---- ?
 * ``testz`` test相关函数
