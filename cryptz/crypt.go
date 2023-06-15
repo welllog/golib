@@ -78,7 +78,7 @@ func EncryptToBase64String[T, E typez.StrOrBytes](plainText T, pass E) (string, 
 }
 
 // DecryptBase64ToString openssl AES-256-CBC implementation
-func DecryptBase64ToString[E typez.StrOrBytes](encryptText string, pass E) (string, error) {
+func DecryptBase64ToString[T, E typez.StrOrBytes](encryptText T, pass E) (string, error) {
 	src, err := strz.Base64Decode(encryptText, base64.StdEncoding)
 	if err != nil {
 		return "", err
