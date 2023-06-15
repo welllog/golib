@@ -148,7 +148,7 @@ func TestPow(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testz.Equal(t, Pow(tt.n, tt.p), tt.want)
+		testz.Equal(t, tt.want, Pow(tt.n, tt.p))
 	}
 }
 
@@ -165,7 +165,7 @@ func TestAbs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testz.Equal(t, Abs(tt.n), tt.want)
+		testz.Equal(t, tt.want, Abs(tt.n))
 	}
 }
 
@@ -185,7 +185,7 @@ func TestBitCount(t *testing.T) {
 	}
 
 	for _, tt := range testsInt64 {
-		testz.Equal(t, BitCount(tt.n), tt.want)
+		testz.Equal(t, tt.want, BitCount(tt.n))
 	}
 
 	testsInt8 := []struct {
@@ -203,7 +203,7 @@ func TestBitCount(t *testing.T) {
 	}
 
 	for _, tt := range testsInt8 {
-		testz.Equal(t, BitCount(tt.n), tt.want)
+		testz.Equal(t, tt.want, BitCount(tt.n))
 	}
 
 	testsInt16 := []struct {
@@ -221,7 +221,7 @@ func TestBitCount(t *testing.T) {
 	}
 
 	for _, tt := range testsInt16 {
-		testz.Equal(t, BitCount(tt.n), tt.want)
+		testz.Equal(t, tt.want, BitCount(tt.n))
 	}
 
 	testsInt32 := []struct {
@@ -239,7 +239,7 @@ func TestBitCount(t *testing.T) {
 	}
 
 	for _, tt := range testsInt32 {
-		testz.Equal(t, BitCount(tt.n), tt.want)
+		testz.Equal(t, tt.want, BitCount(tt.n))
 	}
 }
 
@@ -260,7 +260,7 @@ func TestIsPower2(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testz.Equal(t, IsPower2(tt.n), tt.want, tt.n)
+		testz.Equal(t, tt.want, IsPower2(tt.n), tt.n)
 	}
 }
 
@@ -280,7 +280,7 @@ func TestIsEven(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testz.Equal(t, IsEven(tt.n), tt.want)
+		testz.Equal(t, tt.want, IsEven(tt.n))
 	}
 }
 
@@ -328,9 +328,58 @@ func TestBinary(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testz.Equal(t, Binary(tt.n), tt.want, tt.n)
+		testz.Equal(t, tt.want, Binary(tt.n), tt.n)
 	}
 }
 
-func TestDemo(t *testing.T) {
+func TestMaxBitApprox(t *testing.T) {
+	tests := []struct {
+		n    int
+		want int
+	}{
+		{n: 0, want: 0},
+		{n: 1, want: 1},
+		{n: 2, want: 2},
+		{n: 3, want: 2},
+		{n: 4, want: 4},
+		{n: 5, want: 4},
+		{n: 6, want: 4},
+		{n: 7, want: 4},
+		{n: 8, want: 8},
+		{n: 9, want: 8},
+		{n: 10, want: 8},
+		{n: 11, want: 8},
+		{n: -1, want: -9223372036854775808},
+		{n: -100, want: -9223372036854775808},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.want, MaxBitApprox(tt.n), tt.n)
+	}
+}
+
+func TestMinBitApprox(t *testing.T) {
+	tests := []struct {
+		n    int
+		want int
+	}{
+		{n: 0, want: 0},
+		{n: 1, want: 1},
+		{n: 2, want: 2},
+		{n: 3, want: 1},
+		{n: 4, want: 4},
+		{n: 5, want: 1},
+		{n: 6, want: 2},
+		{n: 7, want: 1},
+		{n: 8, want: 8},
+		{n: -1, want: 1},
+		{n: -2, want: 2},
+		{n: -3, want: 1},
+		{n: -4, want: 4},
+		{n: -100, want: 4},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.want, MinBitApprox(tt.n), tt.n)
+	}
 }

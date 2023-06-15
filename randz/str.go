@@ -14,10 +14,12 @@ const (
 
 var defStrGen = NewStrGenerator(CHAR_SET)
 
+// String returns a random string with the specified length.
 func String(n int) string {
 	return defStrGen.Generate(n)
 }
 
+// StrGenerator is a random string generator.
 type StrGenerator struct {
 	charSet     []rune // character set
 	charIdxBits int    // bit required to represent the number of character sets
@@ -27,6 +29,7 @@ type StrGenerator struct {
 	mu          sync.Mutex
 }
 
+// NewStrGenerator returns a new StrGenerator.
 func NewStrGenerator(charSet string) *StrGenerator {
 	r := []rune(charSet)
 
@@ -44,6 +47,7 @@ func NewStrGenerator(charSet string) *StrGenerator {
 	}
 }
 
+// Generate returns a random string with the specified length.
 func (r *StrGenerator) Generate(n int) string {
 	var buf strings.Builder
 	buf.Grow(n)

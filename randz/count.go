@@ -6,6 +6,7 @@ import (
 	"github.com/welllog/golib/hashz"
 )
 
+// CountGenerator is a generator for count
 type CountGenerator struct {
 	rules []rule
 }
@@ -20,6 +21,7 @@ type rule struct {
 	// rule{period: 3600, periodEndMaxIncr: 100, interval: 10, , intervalMaxIncr: 2}
 }
 
+// AddRule add count increase rule
 func (r *CountGenerator) AddRule(period, periodEndMaxIncr, interval, intervalMaxIncr int) {
 	r.rules = append(r.rules, rule{
 		period:           period,
@@ -32,6 +34,7 @@ func (r *CountGenerator) AddRule(period, periodEndMaxIncr, interval, intervalMax
 	})
 }
 
+// Generate generate count
 func (r *CountGenerator) Generate(id string, diff int) int {
 	if diff <= 0 {
 		return 0
@@ -50,6 +53,7 @@ func (r *CountGenerator) Generate(id string, diff int) int {
 	return count
 }
 
+// Max return max count
 func (r *CountGenerator) Max(diff int) int {
 	if diff <= 0 {
 		return 0
@@ -66,6 +70,7 @@ func (r *CountGenerator) Max(diff int) int {
 	return count
 }
 
+// Min return min count
 func (r *CountGenerator) Min(diff int) int {
 	if diff <= 0 {
 		return 0

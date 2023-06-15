@@ -8,11 +8,13 @@ import (
 	"github.com/welllog/golib/strz"
 )
 
+// String returns the string value for the given key.
 func String(ctx context.Context, key any) string {
 	value := ctx.Value(key)
 	return strz.ToString(value)
 }
 
+// Int returns the int value for the given key.
 func Int(ctx context.Context, key any) int {
 	value := ctx.Value(key)
 	if value == nil {
@@ -54,6 +56,7 @@ func Int(ctx context.Context, key any) int {
 	}
 }
 
+// Int64 returns the int64 value for the given key.
 func Int64(ctx context.Context, key any) int64 {
 	value := ctx.Value(key)
 	if value == nil {
@@ -95,6 +98,7 @@ func Int64(ctx context.Context, key any) int64 {
 	}
 }
 
+// Bool returns the bool value for the given key.
 func Bool(ctx context.Context, key any) bool {
 	value := ctx.Value(key)
 	if value == nil {
@@ -121,6 +125,7 @@ func Bool(ctx context.Context, key any) bool {
 	}
 }
 
+// Float64 returns the float64 value for the given key.
 func Float64(ctx context.Context, key any) float64 {
 	value := ctx.Value(key)
 	if value == nil {

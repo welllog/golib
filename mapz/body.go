@@ -13,8 +13,10 @@ import (
 
 const _HIDDEN_KEY = "xx---.internal.request.payload.---xx"
 
+// Body is a map[string]any
 type Body map[string]any
 
+// Read reads the body as bytes.Reader
 func (b Body) Read(p []byte) (n int, err error) {
 	val, ok := b[_HIDDEN_KEY]
 	if !ok {
@@ -30,15 +32,18 @@ func (b Body) Read(p []byte) (n int, err error) {
 	return val.(*bytes.Reader).Read(p)
 }
 
+// CleanPayload cleans the payload
 func (b Body) CleanPayload() {
 	delete(b, _HIDDEN_KEY)
 }
 
+// QueryString returns the query string
 func (b Body) QueryString(valueEncode func(string) string) string {
 	bs := b.QueryBytes(valueEncode)
 	return *(*string)(unsafe.Pointer(&bs))
 }
 
+// QueryBytes returns the query bytes
 func (b Body) QueryBytes(valueEncode func(string) string) []byte {
 	b.CleanPayload()
 
@@ -114,6 +119,7 @@ func toStr(value any) string {
 
 var _popEncodeReplacer = strings.NewReplacer("+", "%20", "*", "%2A", "%7E", "~")
 
+// PopEncode encodes the string for pop
 func PopEncode(str string) string {
 	return _popEncodeReplacer.Replace(url.QueryEscape(str))
 }

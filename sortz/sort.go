@@ -6,6 +6,7 @@ import (
 	"github.com/welllog/golib/typez"
 )
 
+// OrderAsc is a type that implements the sort.Interface to sort in ascending order.
 type OrderAsc[T typez.Ordered] []T
 
 func (a OrderAsc[T]) Len() int {
@@ -20,6 +21,7 @@ func (a OrderAsc[T]) Less(i, j int) bool {
 	return a[i] < a[j]
 }
 
+// OrderDesc is a type that implements the sort.Interface to sort in descending order.
 type OrderDesc[T typez.Ordered] []T
 
 func (d OrderDesc[T]) Len() int {
@@ -34,10 +36,12 @@ func (d OrderDesc[T]) Less(i, j int) bool {
 	return d[i] > d[j]
 }
 
+// Asc sorts the given slice in ascending order.
 func Asc[T typez.Ordered](a []T) {
 	sort.Sort(OrderAsc[T](a))
 }
 
+// Desc sorts the given slice in descending order.
 func Desc[T typez.Ordered](d []T) {
 	sort.Sort(OrderDesc[T](d))
 }

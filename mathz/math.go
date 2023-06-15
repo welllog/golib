@@ -1,6 +1,7 @@
 package mathz
 
 import (
+	"math/bits"
 	"strconv"
 	"unsafe"
 
@@ -104,15 +105,12 @@ func Binary(n int) string {
 	return strconv.FormatUint(uint64(*(*uint)(unsafe.Pointer(&n))), 2)
 }
 
-func MaxBitApprox(n uint) uint {
-	n |= n >> 1
-	n |= n >> 2
-	n |= n >> 4
-	n |= n >> 8
-	n |= n >> 16
-	return (n + 1) >> 1
+// MaxBitApprox return the highest bit of n that is 1
+func MaxBitApprox(n int) int {
+	return 1 << uint(bits.Len(uint(n))-1)
 }
 
+// MinBitApprox return the lowest bit of n that is 1
 func MinBitApprox(n int) int {
 	return n & (-n)
 }

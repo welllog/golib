@@ -29,6 +29,7 @@ func init() {
 
 var defIdGen = unsafe.Pointer(NewIdGenerator(time.Date(2023, 2, 27, 0, 30, 0, 0, time.UTC), 18))
 
+// SetIdGeneratorStartTime set the start time of the default id generator
 func SetIdGeneratorStartTime(t time.Time) {
 	atomic.StorePointer(&defIdGen, unsafe.Pointer(NewIdGenerator(t, 18)))
 }
@@ -38,6 +39,7 @@ func Id() ID {
 	return (*IdGenerator)(atomic.LoadPointer(&defIdGen)).Generate()
 }
 
+// IdGenerator is a id generator
 type IdGenerator struct {
 	randBit   int
 	randMax   int64
@@ -64,6 +66,7 @@ func NewIdGenerator(startTime time.Time, randBit int) *IdGenerator {
 	}
 }
 
+// Generate generate a id
 func (r *IdGenerator) Generate() ID {
 	var randInt int64
 	bigInt, err := srand.Int(srand.Reader, big.NewInt(r.randMax))
@@ -77,20 +80,25 @@ func (r *IdGenerator) Generate() ID {
 	return ID(timeInt | randInt)
 }
 
+// ID is alias of int64
 type ID int64
 
+// Int64 return int64
 func (f ID) Int64() int64 {
 	return int64(f)
 }
 
+// String return the string of id
 func (f ID) String() string {
 	return strconv.FormatInt(int64(f), 10)
 }
 
+// Base2 return the base2 string of id
 func (f ID) Base2() string {
 	return strconv.FormatInt(int64(f), 2)
 }
 
+// Base32 return the base32 string of id
 func (f ID) Base32() string {
 
 	if f < 32 {
@@ -111,10 +119,12 @@ func (f ID) Base32() string {
 	return string(b)
 }
 
+// Base36 return the base36 string of id
 func (f ID) Base36() string {
 	return strconv.FormatInt(int64(f), 36)
 }
 
+// ParseBase32 parse the base32 string to id
 func ParseBase32(b []byte) (ID, error) {
 	var id int64
 	for i := range b {

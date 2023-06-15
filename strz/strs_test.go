@@ -328,17 +328,17 @@ func TestToString(t *testing.T) {
 
 func BenchmarkBytes(b *testing.B) {
 	s := "hello world, i love you"
-	b.Run("Bytes", func(b *testing.B) {
+	b.Run("UnsafeBytes", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			UnsafeBytes(s)
 		}
 	})
 
-	b.Run("Bytes2", func(b *testing.B) {
+	b.Run("UnsafeStrOrBytesToBytes", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			UnsafeBytes(s)
+			UnsafeStrOrBytesToBytes(s)
 		}
 	})
 

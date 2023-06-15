@@ -4,6 +4,7 @@ import (
 	"github.com/welllog/golib/typez"
 )
 
+// BKDRHash BKDR Hash Function
 func BKDRHash[T typez.StrOrBytes](s T) uint32 {
 	var seed uint32 = 131 // 31 131 1313 13131 131313 etc..
 	var hash uint32 = 0
@@ -13,6 +14,7 @@ func BKDRHash[T typez.StrOrBytes](s T) uint32 {
 	return hash & 0x7FFFFFFF // 0x7FFFFFFF = 2^31 - 1
 }
 
+// BKDRHash64 BKDR Hash Function
 func BKDRHash64[T typez.StrOrBytes](s T) uint64 {
 	var seed uint64 = 131 // 31 131 1313 13131 131313 etc..
 	var hash uint64 = 0
@@ -22,6 +24,7 @@ func BKDRHash64[T typez.StrOrBytes](s T) uint64 {
 	return hash & 0x7FFFFFFFFFFFFFFF // 0x7FFFFFFFFFFFFFFF = 2^63 - 1
 }
 
+// APHash AP Hash Function
 func APHash[T typez.StrOrBytes](s T) uint32 {
 	var hash uint32 = 0
 	for i := 0; i < len(s); i++ {
@@ -34,6 +37,7 @@ func APHash[T typez.StrOrBytes](s T) uint32 {
 	return hash & 0x7FFFFFFF
 }
 
+// APHash64 AP Hash Function
 func APHash64[T typez.StrOrBytes](s T) uint64 {
 	var hash uint64 = 0
 	for i := 0; i < len(s); i++ {
@@ -46,6 +50,7 @@ func APHash64[T typez.StrOrBytes](s T) uint64 {
 	return hash & 0x7FFFFFFFFFFFFFFF
 }
 
+// DJBHash DJB Hash Function
 func DJBHash[T typez.StrOrBytes](s T) uint32 {
 	var hash uint32 = 5381
 	for i := 0; i < len(s); i++ {
@@ -54,6 +59,7 @@ func DJBHash[T typez.StrOrBytes](s T) uint32 {
 	return hash & 0x7FFFFFFF
 }
 
+// DJBHash64 DJB Hash Function
 func DJBHash64[T typez.StrOrBytes](s T) uint64 {
 	var hash uint64 = 5381
 	for i := 0; i < len(s); i++ {
@@ -62,6 +68,7 @@ func DJBHash64[T typez.StrOrBytes](s T) uint64 {
 	return hash & 0x7FFFFFFFFFFFFFFF
 }
 
+// JSHash JS Hash Function
 func JSHash[T typez.StrOrBytes](s T) uint32 {
 	var hash uint32 = 1315423911
 	for i := 0; i < len(s); i++ {
@@ -70,6 +77,7 @@ func JSHash[T typez.StrOrBytes](s T) uint32 {
 	return hash & 0x7FFFFFFF
 }
 
+// JSHash64 JS Hash Function
 func JSHash64[T typez.StrOrBytes](s T) uint64 {
 	var hash uint64 = 1315423911
 	for i := 0; i < len(s); i++ {
@@ -78,6 +86,7 @@ func JSHash64[T typez.StrOrBytes](s T) uint64 {
 	return hash & 0x7FFFFFFFFFFFFFFF
 }
 
+// RSHash RS Hash Function
 func RSHash[T typez.StrOrBytes](s T) uint32 {
 	var b uint32 = 378551
 	var a uint32 = 63689
@@ -89,6 +98,7 @@ func RSHash[T typez.StrOrBytes](s T) uint32 {
 	return hash & 0x7FFFFFFF
 }
 
+// RSHash64 RS Hash Function
 func RSHash64[T typez.StrOrBytes](s T) uint64 {
 	var b uint64 = 378551
 	var a uint64 = 63689
@@ -100,6 +110,7 @@ func RSHash64[T typez.StrOrBytes](s T) uint64 {
 	return hash & 0x7FFFFFFFFFFFFFFF
 }
 
+// SDBMHash SDBM Hash Function
 func SDBMHash[T typez.StrOrBytes](s T) uint32 {
 	var hash uint32 = 0
 	for i := 0; i < len(s); i++ {
@@ -109,6 +120,7 @@ func SDBMHash[T typez.StrOrBytes](s T) uint32 {
 	return hash & 0x7FFFFFFF
 }
 
+// SDBMHash64 SDBM Hash Function
 func SDBMHash64[T typez.StrOrBytes](s T) uint64 {
 	var hash uint64 = 0
 	for i := 0; i < len(s); i++ {
@@ -118,6 +130,7 @@ func SDBMHash64[T typez.StrOrBytes](s T) uint64 {
 	return hash & 0x7FFFFFFFFFFFFFFF
 }
 
+// PJWHash PJW Hash Function
 func PJWHash[T typez.StrOrBytes](s T) uint32 {
 	var BitsInUnignedInt uint32 = 4 * 8
 	var ThreeQuarters = (BitsInUnignedInt * 3) / 4
@@ -134,6 +147,7 @@ func PJWHash[T typez.StrOrBytes](s T) uint32 {
 	return hash & 0x7FFFFFFF
 }
 
+// PJWHash64 PJW Hash Function
 func PJWHash64[T typez.StrOrBytes](s T) uint64 {
 	var BitsInUnignedInt uint64 = 4 * 8
 	var ThreeQuarters = (BitsInUnignedInt * 3) / 4
@@ -150,6 +164,7 @@ func PJWHash64[T typez.StrOrBytes](s T) uint64 {
 	return hash & 0x7FFFFFFFFFFFFFFF
 }
 
+// ELFHash ELF Hash Function
 func ELFHash[T typez.StrOrBytes](s T) uint32 {
 	var hash uint32 = 0
 	var x uint32 = 0
@@ -163,6 +178,7 @@ func ELFHash[T typez.StrOrBytes](s T) uint32 {
 	return hash & 0x7FFFFFFF
 }
 
+// ELFHash64 ELF Hash Function
 func ELFHash64[T typez.StrOrBytes](s T) uint64 {
 	var hash uint64 = 0
 	var x uint64 = 0

@@ -55,11 +55,13 @@ func init() {
 	*/
 }
 
+// EncryptLen returns the length of the encrypted data
 func EncryptLen[T typez.StrOrBytes](s T) int {
 	n := len(s) + aes.BlockSize
 	return n + aes.BlockSize - (n & blockSizeMask)
 }
 
+// DecryptLen returns the length of the decrypted data
 func DecryptLen[T typez.StrOrBytes](s T) int {
 	return len(s) - aes.BlockSize
 }
