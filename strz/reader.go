@@ -74,7 +74,7 @@ func (r *Reader[T]) WriteTo(w io.Writer) (n int64, err error) {
 		return 0, nil
 	}
 	b := r.s[r.i:]
-	m, err := w.Write([]byte(b))
+	m, err := w.Write(UnsafeStrOrBytesToBytes(b))
 	if m > len(b) {
 		panic("reqx.Reader.WriteTo: invalid Write count")
 	}
@@ -114,5 +114,5 @@ func (r *Reader[T]) Reset(s T) {
 }
 
 func (r *Reader[T]) Bytes() []byte {
-	return []byte(r.s[r.i:])
+	return UnsafeStrOrBytesToBytes(r.s[r.i:])
 }

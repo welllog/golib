@@ -8,9 +8,8 @@ import (
 )
 
 const (
-	MaxUint  = ^uint(0)
-	MaxInt   = int(^uint(0) >> 1)
-	WordBits = 32 << (^uint(0) >> 63)
+	MaxUint = ^uint(0)
+	MaxInt  = int(^uint(0) >> 1)
 )
 
 // Max returns the maximum value in a slice of numbers.
@@ -55,8 +54,8 @@ func Sum[T typez.Number](n ...T) T {
 }
 
 // Pow returns x**n, the base-x exponential of n.
-func Pow(x, n int) int {
-	ret := 1
+func Pow(x int, n uint) int {
+	var ret = 1
 	for n != 0 {
 		if (n & 1) != 0 { // n % 2 != 0
 			ret = ret * x
@@ -69,12 +68,12 @@ func Pow(x, n int) int {
 
 // Abs returns the absolute value of n.
 func Abs(n int) int {
-	i := n >> (WordBits - 1)
+	i := n >> (typez.WordBits - 1)
 	return n ^ i - i
 }
 
 // BitCount returns the number of bits that are set in n.
-func BitCount(n int) int {
+func BitCount[T typez.Integer](n T) int {
 	count := 0
 	for n != 0 {
 		count++
@@ -84,7 +83,7 @@ func BitCount(n int) int {
 }
 
 // IsPower2 returns true if n is a power of two.
-func IsPower2(n int) bool {
+func IsPower2(n uint) bool {
 	return n != 0 && (n&(n-1)) == 0
 }
 

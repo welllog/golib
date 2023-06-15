@@ -50,7 +50,7 @@ func (b Body) QueryBytes(valueEncode func(string) string) []byte {
 	var initSize int
 	for k := range b {
 		keys = append(keys, k)
-		initSize += len(k) + 3
+		initSize += 2 * len(k)
 	}
 
 	sort.Strings(keys)

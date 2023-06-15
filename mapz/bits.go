@@ -16,9 +16,9 @@ func NewBits() *Bits {
 
 func (b *Bits) Add(num uint) {
 	index, bit := num/64, num%64
-	grow := int(index) - len(b.set)
-	if grow >= 0 {
-		b.set = append(b.set, make([]uint64, grow+1)...)
+	grow := int(index) - len(b.set) + 1
+	if grow > 0 {
+		b.set = append(b.set, make([]uint64, grow)...)
 	}
 	if b.set[index]&(1<<bit) == 0 {
 		b.set[index] |= 1 << bit

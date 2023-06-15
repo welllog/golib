@@ -112,9 +112,10 @@ func Bool(ctx context.Context, key any) bool {
 		} else if v == "false" {
 			return false
 		}
-
 		i, _ := strconv.ParseInt(v, 10, 64)
 		return i != 0
+	case float64, float32, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return v != 0
 	default:
 		return false
 	}

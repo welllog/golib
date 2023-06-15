@@ -6,7 +6,7 @@ import (
 	"github.com/welllog/golib/testz"
 )
 
-func TestBit_Add(t *testing.T) {
+func TestBits_Add(t *testing.T) {
 	m := NewBits()
 	testz.Equal(t, 0, m.Len(), "init bit map len must be zero")
 
@@ -22,7 +22,7 @@ func TestBit_Add(t *testing.T) {
 	t.Log(m.String())
 }
 
-func TestBit_Contains(t *testing.T) {
+func TestBits_Contains(t *testing.T) {
 	m := NewBits()
 
 	tests := []struct {
