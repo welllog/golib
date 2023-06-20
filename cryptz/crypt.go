@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	CBC_SALT_LEN = 8
-	CBC_KEY_LEN  = 32
-	CBC_CRED_LEN = 48 // CBC_BLOCK_LEN(16)+CBC_KEY_LEN(32)
+	SALT_LEN = 8
+	KEY_LEN  = 32
+	CRED_LEN = 48 // BLOCK_LEN(16)+KEY_LEN(32)
 )
 
 var (
@@ -96,15 +96,15 @@ func DecryptBase64ToString[T, E typez.StrOrBytes](encryptText T, pass E) (string
 
 // Encrypt encrypts plainText with pass
 func Encrypt[T, E typez.StrOrBytes](dst []byte, plainText T, pass E) error {
-	var salt [CBC_SALT_LEN]byte
-	var cred [CBC_CRED_LEN]byte
+	var salt [SALT_LEN]byte
+	var cred [CRED_LEN]byte
 	err := fillSaltAndCred(salt[:], cred[:], pass)
 	if err != nil {
 		return err
 	}
 
-	key := cred[:CBC_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[CBC_KEY_LEN:]  // 16 bytes, same as block size
+	key := cred[:KEY_LEN] // 32 bytes, 256 / 8
+	iv := cred[KEY_LEN:]  // 16 bytes, same as block size
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -143,11 +143,11 @@ func Decrypt[T, E typez.StrOrBytes](dst []byte, encryptText T, pass E) (int, err
 		return 0, errors.New("check cbc fixed header error")
 	}
 
-	var cred [CBC_CRED_LEN]byte
+	var cred [CRED_LEN]byte
 	fillCred(cred[:], saltHeader[8:], pass)
 
-	key := cred[:CBC_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[CBC_KEY_LEN:]  // 16 bytes, same as block size
+	key := cred[:KEY_LEN] // 32 bytes, 256 / 8
+	iv := cred[KEY_LEN:]  // 16 bytes, same as block size
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -159,17 +159,81 @@ func Decrypt[T, E typez.StrOrBytes](dst []byte, encryptText T, pass E) (int, err
 	return pkcs7UnPadding(dst)
 }
 
+// GCMEncrypt encrypts plainText with pass and additionalData
+func GCMEncrypt[T, E, D typez.StrOrBytes](plainText T, pass E, additionalData D) ([]byte, error) {
+	h1 := md5.Sum(strz.UnsafeStrOrBytesToBytes(pass))
+	h2 := md5.Sum(h1[:])
+
+	key := make([]byte, KEY_LEN)
+	copy(key, h2[:])
+	copy(key[16:], h1[:])
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("NewCipher error: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("NewGCM error: %w", err)
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	_, err = rand.Read(nonce)
+	if err != nil {
+		return nil, fmt.Errorf("rand.Read error: %w", err)
+	}
+
+	ciphertext := gcm.Seal(nil, nonce,
+		strz.UnsafeStrOrBytesToBytes(plainText), strz.UnsafeStrOrBytesToBytes(additionalData))
+
+	dst := make([]byte, len(nonce)+len(ciphertext))
+	copy(dst, nonce)
+	copy(dst[len(nonce):], ciphertext)
+
+	return dst, nil
+}
+
+// GCMDecrypt decrypts enc with pass and additionalData
+func GCMDecrypt[T, E, D typez.StrOrBytes](encryptText T, pass E, additionalData D) ([]byte, error) {
+	h1 := md5.Sum(strz.UnsafeStrOrBytesToBytes(pass))
+	h2 := md5.Sum(h1[:])
+
+	key := make([]byte, KEY_LEN)
+	copy(key, h2[:])
+	copy(key[16:], h1[:])
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("NewCipher error: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("NewGCM error: %w", err)
+	}
+
+	if len(encryptText) < gcm.NonceSize() {
+		return nil, fmt.Errorf("encrypt text length illegal: len=%d", len(encryptText))
+	}
+
+	b := strz.UnsafeStrOrBytesToBytes(encryptText)
+	nonce := b[:gcm.NonceSize()]
+
+	return gcm.Open(nil, nonce, b[len(nonce):], strz.UnsafeStrOrBytesToBytes(additionalData))
+}
+
 // EncryptStreamTo encrypts stream to out with pass
 func EncryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, pass E) error {
-	var salt [CBC_SALT_LEN]byte
-	var cred [CBC_CRED_LEN]byte
+	var salt [SALT_LEN]byte
+	var cred [CRED_LEN]byte
 	err := fillSaltAndCred(salt[:], cred[:], pass)
 	if err != nil {
 		return err
 	}
 
-	key := cred[:CBC_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[CBC_KEY_LEN:]
+	key := cred[:KEY_LEN] // 32 bytes, 256 / 8
+	iv := cred[KEY_LEN:]
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -209,11 +273,11 @@ func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, pass E
 		return fmt.Errorf("read header less error: n=%d", n)
 	}
 
-	var cred [CBC_CRED_LEN]byte
+	var cred [CRED_LEN]byte
 	fillCred(cred[:], saltHeader[8:], pass)
 
-	key := cred[:CBC_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[CBC_KEY_LEN:]
+	key := cred[:KEY_LEN] // 32 bytes, 256 / 8
+	iv := cred[KEY_LEN:]
 
 	block, err := aes.NewCipher(key)
 	if err != nil {

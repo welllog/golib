@@ -1,12 +1,9 @@
 package cryptz
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"fmt"
-	"io"
 
 	"github.com/welllog/golib/typez"
 )
@@ -58,48 +55,34 @@ func AESCBCDecrypt(dst, encryptText, key, iv []byte) (int, error) {
 
 // AESGCMEncrypt encrypts plainText with key and additionalData
 // key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
-// dst could reuse plainText memory
-func AESGCMEncrypt(dst, plainText, key, additionalData []byte) ([]byte, error) {
+// dst could reuse plainText memory when additionalData is nil
+func AESGCMEncrypt(dst, plainText, key, nonce, additionalData []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("NewCipher error: %w", err)
 	}
 
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := cipher.NewGCMWithNonceSize(block, len(nonce))
 	if err != nil {
 		return nil, fmt.Errorf("NewGCM error: %w", err)
 	}
 
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("ReadFull error: %w", err)
-	}
-
-	return gcm.Seal(dst, nonce, plainText, additionalData), nil
+	return gcm.Seal(dst[:0], nonce, plainText, additionalData), nil
 }
 
 // AESGCMDecrypt decrypts encryptText with key and additionalData
 // key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
-// dst could reuse encryptText memory
-func AESGCMDecrypt(dst, encryptText, key, additionalData []byte) ([]byte, error) {
+// dst could reuse encryptText memory when additionalData is nil
+func AESGCMDecrypt(dst, encryptText, key, nonce, additionalData []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("NewCipher error: %w", err)
 	}
 
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := cipher.NewGCMWithNonceSize(block, len(nonce))
 	if err != nil {
 		return nil, fmt.Errorf("NewGCM error: %w", err)
 	}
 
-	nonceSize := gcm.NonceSize()
-	if len(encryptText) < nonceSize {
-		return nil, fmt.Errorf("encrypt text length illegal: len=%d", len(encryptText))
-	}
-
-	// to reuse encryptText storage as dst, we need check if dst is encryptText
-	if bytes.Equal(dst, encryptText) {
-		dst = dst[nonceSize:]
-	}
-	return gcm.Open(dst, encryptText[:nonceSize], encryptText[nonceSize:], additionalData)
+	return gcm.Open(dst[:0], nonce, encryptText, additionalData)
 }

@@ -154,3 +154,36 @@ func TestEncryptStreamTo(t *testing.T) {
 	_ = os.Remove("1.txt")
 	_ = os.Remove("1.txt.enc")
 }
+
+func TestGCMEncrypt(t *testing.T) {
+	plainText := "hello world"
+	pass := "im a pass"
+	additionalData := "im a additional data"
+	enc, err := GCMEncrypt(plainText, pass, additionalData)
+	if err != nil {
+		t.Fatalf("GCMEncrypt error: %s", err)
+	}
+
+	dec, err := GCMDecrypt(enc, pass, additionalData)
+	if err != nil {
+		t.Fatalf("GCMDecrypt error: %s", err)
+	}
+
+	if string(dec) != plainText {
+		t.Fatalf("GCMDecrypt error, expected: %s, actual: %s", plainText, string(dec))
+	}
+
+	enc, err = GCMEncrypt(plainText, pass, "")
+	if err != nil {
+		t.Fatalf("GCMEncrypt error: %s", err)
+	}
+
+	dec, err = GCMDecrypt(enc, pass, []byte{})
+	if err != nil {
+		t.Fatalf("GCMDecrypt error: %s", err)
+	}
+
+	if string(dec) != plainText {
+		t.Fatalf("GCMDecrypt error, expected: %s, actual: %s", plainText, string(dec))
+	}
+}
