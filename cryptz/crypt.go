@@ -174,7 +174,7 @@ func EncryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, secret
 		return fmt.Errorf("write salt error: %w", err)
 	}
 
-	encStream := cipher.NewCFBEncrypter(block, iv)
+	encStream := cipher.NewCTR(block, iv)
 	writer := &cipher.StreamWriter{S: encStream, W: out}
 	_, err = io.Copy(writer, stream)
 	if err != nil {
@@ -197,6 +197,10 @@ func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, secret
 		return fmt.Errorf("read header less error: n=%d", n)
 	}
 
+	if !bytes.Equal(saltHeader[:8], fixedSaltHeader) {
+		return errors.New("check fixed header error")
+	}
+
 	var cred [_CRED_LEN]byte
 	fillCred(cred[:], saltHeader[8:], secret)
 
@@ -208,7 +212,7 @@ func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, secret
 		return fmt.Errorf("NewCipher error: %w", err)
 	}
 
-	decStream := cipher.NewCFBDecrypter(block, iv)
+	decStream := cipher.NewCTR(block, iv)
 	reader := &cipher.StreamReader{S: decStream, R: stream}
 
 	_, err = io.Copy(out, reader)
