@@ -1,14 +1,13 @@
 package cryptz
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
 	"github.com/welllog/golib/testz"
 )
 
-func TestEncryptToBase64String(t *testing.T) {
+func TestEncrypt(t *testing.T) {
 	tests1 := []struct {
 		text string
 		pass string
@@ -17,19 +16,17 @@ func TestEncryptToBase64String(t *testing.T) {
 		{"👋，世界", "测试"},
 	}
 	for _, tt := range tests1 {
-		enc, err := EncryptToBase64String(tt.text, tt.pass)
+		enc, err := Encrypt(tt.text, tt.pass)
 		if err != nil {
 			t.Fatalf("EncryptToString(%s, %s) error: %s", tt.text, tt.pass, err)
 		}
 
-		dec, err := DecryptBase64ToString(enc, tt.pass)
+		dec, err := Decrypt(enc, tt.pass)
 		if err != nil {
 			t.Fatalf("DecryptFromString(%s, %s) error: %s", enc, tt.pass, err)
 		}
 
-		testz.Equal(t, tt.text, dec,
-			fmt.Sprintf("EncryptToString(%s, %s) != DecryptFromString(%s, %s)", tt.text, tt.pass, enc, tt.pass),
-		)
+		testz.Equal(t, tt.text, string(dec))
 	}
 
 	tests2 := []struct {
@@ -40,19 +37,17 @@ func TestEncryptToBase64String(t *testing.T) {
 		{[]byte("??，世界"), []byte("测试")},
 	}
 	for _, tt := range tests2 {
-		enc, err := EncryptToBase64String(tt.text, tt.pass)
+		enc, err := Encrypt(tt.text, tt.pass)
 		if err != nil {
 			t.Fatalf("Encrypt(%s, %s) error: %s", tt.text, tt.pass, err)
 		}
 
-		dec, err := DecryptBase64ToString(enc, tt.pass)
+		dec, err := Decrypt(enc, tt.pass)
 		if err != nil {
 			t.Fatalf("Decrypt(%s, %s) error: %s", enc, tt.pass, err)
 		}
 
-		testz.Equal(t, string(tt.text), dec,
-			fmt.Sprintf("EncryptToString(%s, %s) != DecryptFromString(%s, %s)", string(tt.text), string(tt.pass), enc, string(tt.pass)),
-		)
+		testz.Equal(t, string(tt.text), string(dec))
 	}
 
 	tests3 := []struct {
@@ -63,19 +58,17 @@ func TestEncryptToBase64String(t *testing.T) {
 		{"??，世界", []byte("测试")},
 	}
 	for _, tt := range tests3 {
-		enc, err := EncryptToBase64String([]byte(tt.text), tt.pass)
+		enc, err := Encrypt([]byte(tt.text), tt.pass)
 		if err != nil {
 			t.Fatalf("Encrypt(%s, %s) error: %s", tt.text, tt.pass, err)
 		}
 
-		dec, err := DecryptBase64ToString(enc, tt.pass)
+		dec, err := Decrypt(enc, tt.pass)
 		if err != nil {
 			t.Fatalf("Decrypt(%s, %s) error: %s", enc, tt.pass, err)
 		}
 
-		testz.Equal(t, tt.text, dec,
-			fmt.Sprintf("EncryptToString(%s, %s) != DecryptFromString(%s, %s)", tt.text, string(tt.pass), enc, string(tt.pass)),
-		)
+		testz.Equal(t, tt.text, string(dec))
 	}
 
 	tests4 := []struct {
@@ -87,19 +80,17 @@ func TestEncryptToBase64String(t *testing.T) {
 		{[]byte("this is no pass"), ""},
 	}
 	for _, tt := range tests4 {
-		enc, err := EncryptToBase64String(tt.text, []byte(tt.pass))
+		enc, err := Encrypt(tt.text, []byte(tt.pass))
 		if err != nil {
 			t.Fatalf("Encrypt(%s, %s) error: %s", tt.text, tt.pass, err)
 		}
 
-		dec, err := DecryptBase64ToString(enc, []byte(tt.pass))
+		dec, err := Decrypt(enc, []byte(tt.pass))
 		if err != nil {
 			t.Fatalf("Decrypt(%s, %s) error: %s", enc, tt.pass, err)
 		}
 
-		testz.Equal(t, string(tt.text), dec,
-			fmt.Sprintf("EncryptToString(%s, %s) != DecryptFromString(%s, %s)", tt.text, tt.pass, enc, tt.pass),
-		)
+		testz.Equal(t, string(tt.text), string(dec))
 	}
 }
 
