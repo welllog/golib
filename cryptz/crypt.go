@@ -197,6 +197,10 @@ func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, secret
 		return fmt.Errorf("read header less error: n=%d", n)
 	}
 
+	if !bytes.Equal(saltHeader[:8], fixedSaltHeader) {
+		return errors.New("check fixed header error")
+	}
+
 	var cred [_CRED_LEN]byte
 	fillCred(cred[:], saltHeader[8:], secret)
 
