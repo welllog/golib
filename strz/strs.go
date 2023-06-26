@@ -27,12 +27,13 @@ func UnsafeBytes(s string) []byte {
 
 // UnsafeStrOrBytesToBytes converts string or byte slice to byte slice. maybe safe risk
 func UnsafeStrOrBytesToBytes[T typez.StrOrBytes](s T) []byte {
-	return *(*[]byte)(unsafe.Pointer(
-		&struct {
-			string
-			Cap int
-		}{*(*string)(unsafe.Pointer(&s)), len(s)},
-	))
+	if unsafe.Sizeof(s)/typez.WordBytes == 2 {
+		x := (*[2]uintptr)(unsafe.Pointer(&s))
+		h := [3]uintptr{x[0], x[1], x[1]}
+		return *(*[]byte)(unsafe.Pointer(&h))
+	}
+
+	return *(*[]byte)(unsafe.Pointer(&s))
 }
 
 // Mask returns a string with the first `start` and last `end` characters
