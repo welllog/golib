@@ -604,7 +604,7 @@ func TestChunk(t *testing.T) {
 			name:      "empty slice",
 			s:         []int{},
 			chunkSize: 2,
-			want:      [][]int{{}},
+			want:      [][]int{},
 		},
 		{
 			name:      "slice smaller than chunk size",
@@ -635,6 +635,12 @@ func TestChunk(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := Chunk(tt.s.([]int), tt.chunkSize)
+			if len(tt.s.([]int)) == 0 {
+				if len(got) > 0 {
+					t.Errorf("Chunk() = %v, want %v", got, tt.want)
+				}
+				return
+			}
 			if !reflect.DeepEqual(got, tt.want.([][]int)) {
 				t.Errorf("Chunk() = %v, want %v", got, tt.want)
 			}

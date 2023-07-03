@@ -185,6 +185,10 @@ func Contains[T comparable](s []T, v T) bool {
 
 // Chunk splits slice s into chunks of size chunkSize, and returns the result.
 func Chunk[T any](s []T, chunkSize int) [][]T {
+	if len(s) == 0 {
+		return nil
+	}
+
 	if chunkSize < 1 || len(s) <= chunkSize {
 		return [][]T{s}
 	}
@@ -205,6 +209,10 @@ func Chunk[T any](s []T, chunkSize int) [][]T {
 
 // ChunkProcess splits slice s into chunks of size chunkSize, and calls process on each chunk.
 func ChunkProcess[T any](s []T, chunkSize int, process func([]T) error) error {
+	if len(s) == 0 {
+		return nil
+	}
+
 	if chunkSize < 1 || len(s) <= chunkSize {
 		return process(s)
 	}
