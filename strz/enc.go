@@ -299,10 +299,10 @@ func Utf16Encode[T typez.StrOrBytes](s T) []byte {
 			continue
 		}
 
-		if c < 0x10000 {
+		if (c >= 0 && c < 0xd800) || (c >= 0xe000 && c < 0x10000) {
 			appendInt64(int64(c), 16, b[f:j])
 			toUpper(b[f:j])
-		} else {
+		} else if c >= 0x10000 && c <= '\U0010FFFF' {
 			r1, r2 := utf16.EncodeRune(c)
 			appendInt64(int64(r1), 16, b[f:j])
 			toUpper(b[f:j])
@@ -313,6 +313,8 @@ func Utf16Encode[T typez.StrOrBytes](s T) []byte {
 
 			appendInt64(int64(r2), 16, b[f:j])
 			toUpper(b[f:j])
+		} else {
+			copy(b[f:j], "FFFD")
 		}
 
 		i += size
@@ -333,7 +335,7 @@ func Utf16Decode(src, dst []byte) int {
 			continue
 		}
 
-		n1, j, ok := parseUint(src[i+2:i+6], 16, 32)
+		n1, j, ok := parseUint(src[i+2:i+6], 16, 16)
 		if !ok {
 			i += 2 + j
 			continue
@@ -344,7 +346,7 @@ func Utf16Decode(src, dst []byte) int {
 			f = i
 		}
 
-		if n1 < 0xd800 || n1 > 0xe000 {
+		if n1 < 0xd800 || n1 >= 0xe000 {
 			e += utf8.EncodeRune(dst[e:], rune(n1))
 			i += 6
 			f = i
@@ -362,7 +364,7 @@ func Utf16Decode(src, dst []byte) int {
 				continue
 			}
 
-			n2, j, ok := parseUint(src[i+2:i+6], 16, 32)
+			n2, j, ok := parseUint(src[i+2:i+6], 16, 16)
 			if !ok {
 				i += 2 + j
 				continue
