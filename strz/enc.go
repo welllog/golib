@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/welllog/golib/typez"
 )
@@ -83,31 +84,13 @@ func LongToIPv4(long uint32) string {
 // OctalEncode returns the octal encoding of s
 func OctalEncode[T typez.StrOrBytes](s T) []byte {
 	b := make([]byte, len(s)*4)
-	j := 0
-	t := make([]byte, 0, 3)
+	var j, f int
 
 	for i := 0; i < len(s); i++ {
 		b[j] = '\\'
-
-		t = strconv.AppendInt(t, int64(s[i]), 8)
-
-		switch len(t) {
-		case 1:
-			b[j+1] = 48
-			b[j+2] = 48
-			b[j+3] = t[0]
-		case 2:
-			b[j+1] = 48
-			b[j+2] = t[0]
-			b[j+3] = t[1]
-		case 3:
-			b[j+1] = t[0]
-			b[j+2] = t[1]
-			b[j+3] = t[2]
-		default:
-		}
+		f = j + 1
 		j += 4
-		t = t[:0]
+		appendInt64(int64(s[i]), 8, b[f:j])
 	}
 	return b
 }
@@ -161,6 +144,93 @@ func OctalDecodeInPlace(b []byte) int {
 		j++
 	}
 	return j
+}
+
+// HexEncodeWithPrefix returns the hex encode format \xXX
+func HexEncodeWithPrefix[T typez.StrOrBytes](s T) []byte {
+	b := make([]byte, len(s)*4)
+	var j, f int
+
+	for i := 0; i < len(s); i++ {
+		b[j] = '\\'
+		b[j+1] = 'x'
+
+		f = j + 2
+		j += 4
+		appendInt64(int64(s[i]), 16, b[f:j])
+		toUpper(b[f:j])
+	}
+	return b
+}
+
+func HexDecodeWithPrefix(src, dst []byte) int {
+	var e, f int
+	for i := 0; i < len(src); {
+		if len(src)-i < 4 {
+			break
+		}
+
+		if src[i] != '\\' || src[i+1] != 'x' {
+			i++
+			continue
+		}
+
+		n, ok := parseUint(src[i+2:i+4], 16, 8)
+		if !ok {
+			i += 2
+			continue
+		}
+
+		if f < i {
+			incr := copy(dst[e:], src[f:i])
+			e += incr
+		}
+		dst[e] = byte(n)
+
+		e++
+		i += 4
+		f = i
+	}
+
+	if f < len(src) {
+		incr := copy(dst[e:], src[f:])
+		e += incr
+	}
+
+	return e
+}
+
+func UnicodeEncode[T typez.StrOrBytes](s T) []byte {
+	src := UnsafeStrOrBytesToString(s)
+
+	b := make([]byte, utf8.RuneCountInString(src)*10)
+	var j, f int
+
+	for i := 0; i < len(src); {
+		b[j] = '\\'
+		b[j+1] = 'U'
+
+		f = j + 2
+		j += 10
+
+		if bt := src[i]; bt < utf8.RuneSelf {
+			appendInt64(int64(bt), 16, b[f:j])
+			toUpper(b[f:j])
+
+			i++
+			continue
+		}
+
+		c, size := utf8.DecodeRuneInString(src[i:])
+		if c != utf8.RuneError {
+			appendInt64(int64(c), 16, b[f:j])
+			toUpper(b[f:j])
+		}
+
+		i += size
+	}
+
+	return b
 }
 
 // OctalEncodeToString returns the octal encoding of s

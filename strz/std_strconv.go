@@ -11,7 +11,11 @@ const (
 )
 
 func lower(c byte) byte {
-	return c | ('x' - 'X')
+	return c | 32
+}
+
+func upper(c byte) byte {
+	return c &^ (c >> 6 << 5)
 }
 
 // ParseUint is like ParseInt but for unsigned numbers.
@@ -113,6 +117,43 @@ func ParseUint[T typez.StrOrBytes](s T, base int, bitSize int) (uint64, error) {
 	}
 
 	return n, nil
+}
+
+func parseUint[T typez.StrOrBytes](s T, base int, bitSize int) (uint64, bool) {
+	cutoff := maxUint64/uint64(base) + 1
+	maxVal := uint64(1)<<uint(bitSize) - 1
+	var n uint64
+	for i := 0; i < len(s); i++ {
+		var d byte
+		c := s[i]
+		switch {
+		case '0' <= c && c <= '9':
+			d = c - '0'
+		case 'a' <= lower(c) && lower(c) <= 'z':
+			d = lower(c) - 'a' + 10
+		default:
+			return 0, false
+		}
+
+		if d >= byte(base) {
+			return 0, false
+		}
+
+		if n >= cutoff {
+			// n*base overflows
+			return maxVal, false
+		}
+		n *= uint64(base)
+
+		n1 := n + uint64(d)
+		if n1 < n || n1 > maxVal {
+			// n+d overflows
+			return maxVal, false
+		}
+		n = n1
+	}
+
+	return n, true
 }
 
 // underscoreOK reports whether the underscores in s are allowed.

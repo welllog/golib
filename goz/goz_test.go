@@ -72,6 +72,19 @@ func TestLimiter_Go2(t *testing.T) {
 	}).Wait()
 }
 
+func TestLimiter_Wait(t *testing.T) {
+	now := time.Now()
+	NewLimiter(1).Go(func() {
+		time.Sleep(time.Second)
+	}).Wait(500 * time.Millisecond)
+
+	since := time.Since(now).Milliseconds()
+	if since > 1000 {
+		t.Fatal("wait must less than 1000")
+	}
+	t.Logf("wait %d ms", since)
+}
+
 func TestLogPanic(t *testing.T) {
 	f := LogPanic(logger{}, 10)
 

@@ -36,6 +36,11 @@ func UnsafeStrOrBytesToBytes[T typez.StrOrBytes](s T) []byte {
 	return *(*[]byte)(unsafe.Pointer(&s))
 }
 
+// UnsafeStrOrBytesToString converts string or byte slice to string.
+func UnsafeStrOrBytesToString[T typez.StrOrBytes](s T) string {
+	return *(*string)(unsafe.Pointer(&s))
+}
+
 // Mask returns a string with the first `start` and last `end` characters
 func Mask(str, mask string, start, end int) string {
 	l := utf8.RuneCountInString(str)

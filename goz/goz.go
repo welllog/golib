@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Limiter struct {
@@ -36,7 +37,21 @@ func (l *Limiter) Go(fn func()) *Limiter {
 	return l
 }
 
-func (l *Limiter) Wait() {
+func (l *Limiter) Wait(waitTime ...time.Duration) {
+	if len(waitTime) > 0 {
+		quit := make(chan struct{}, 1)
+		go func(ch chan<- struct{}) {
+			l.w.Wait()
+			ch <- struct{}{}
+		}(quit)
+
+		select {
+		case <-quit:
+		case <-time.After(waitTime[0]):
+		}
+		return
+	}
+
 	l.w.Wait()
 }
 
