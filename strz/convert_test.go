@@ -99,6 +99,8 @@ func TestDemo1(t *testing.T) {
 	n := HexDecodeWithPrefix(b, b)
 	fmt.Println(string(b[:n]))
 
+	fmt.Println(string(HexEncodeWithPrefix("ef")))
+
 	s := []byte("\\xE5\\x93\\x88hello\\xE5\\x93\\x88你好\\xF0\\x9F\\x98\\x84")
 	n = HexDecodeWithPrefix(s, s)
 	fmt.Println(string(s[:n]))
@@ -106,6 +108,30 @@ func TestDemo1(t *testing.T) {
 	s = []byte("\\xE5\\x93\\x88hello\\x\\x1\\xE5\\x93\\x88你好\\xF0\\x9F\\x98\\x84")
 	n = HexDecodeWithPrefix(s, s)
 	fmt.Println(string(s[:n]))
+}
+
+func TestDemo2(t *testing.T) {
+	b := UnicodeEncode("hello,世界😄")
+	fmt.Println(string(b))
+
+	n := UnicodeDecode(b, b)
+	fmt.Println(string(b[:n]))
+
+	b = []byte("\\U00000068\\U00000065\\U0000006C\\U0000006C\\U12\\x\\12ff23\\U0000006F\\U0000002C\\U00004E16\\U0000754C\\U0001F604")
+	n = UnicodeDecode(b, b)
+	fmt.Println(string(b[:n]))
+}
+
+func TestDemo3(t *testing.T) {
+	b := Utf16Encode("hello,世界😄")
+	fmt.Println(string(b))
+
+	n := Utf16Decode(b, b)
+	fmt.Println(string(b[:n]))
+
+	b = []byte("\\u0068\\u23\\U232131313\\\\uD83D\\uE000\\u0065\\u006C\\u006C\\u006F\\u002C\\u4E16\\u754C\\uD83D\\uDE04")
+	n = Utf16Decode(b, b)
+	fmt.Println(string(b[:n]))
 }
 
 func TestUpper(t *testing.T) {

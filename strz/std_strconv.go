@@ -119,7 +119,7 @@ func ParseUint[T typez.StrOrBytes](s T, base int, bitSize int) (uint64, error) {
 	return n, nil
 }
 
-func parseUint[T typez.StrOrBytes](s T, base int, bitSize int) (uint64, bool) {
+func parseUint[T typez.StrOrBytes](s T, base int, bitSize int) (uint64, int, bool) {
 	cutoff := maxUint64/uint64(base) + 1
 	maxVal := uint64(1)<<uint(bitSize) - 1
 	var n uint64
@@ -132,28 +132,28 @@ func parseUint[T typez.StrOrBytes](s T, base int, bitSize int) (uint64, bool) {
 		case 'a' <= lower(c) && lower(c) <= 'z':
 			d = lower(c) - 'a' + 10
 		default:
-			return 0, false
+			return 0, i, false
 		}
 
 		if d >= byte(base) {
-			return 0, false
+			return 0, i, false
 		}
 
 		if n >= cutoff {
 			// n*base overflows
-			return maxVal, false
+			return maxVal, i, false
 		}
 		n *= uint64(base)
 
 		n1 := n + uint64(d)
 		if n1 < n || n1 > maxVal {
 			// n+d overflows
-			return maxVal, false
+			return maxVal, i, false
 		}
 		n = n1
 	}
 
-	return n, true
+	return n, len(s), true
 }
 
 // underscoreOK reports whether the underscores in s are allowed.

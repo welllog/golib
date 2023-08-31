@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"github.com/welllog/golib/typez"
@@ -175,9 +176,9 @@ func HexDecodeWithPrefix(src, dst []byte) int {
 			continue
 		}
 
-		n, ok := parseUint(src[i+2:i+4], 16, 8)
+		n, j, ok := parseUint(src[i+2:i+4], 16, 8)
 		if !ok {
-			i += 2
+			i += 2 + j
 			continue
 		}
 
@@ -231,6 +232,161 @@ func UnicodeEncode[T typez.StrOrBytes](s T) []byte {
 	}
 
 	return b
+}
+
+func UnicodeDecode(src, dst []byte) int {
+	var e, f int
+	for i := 0; i < len(src); {
+		if len(src)-i < 10 {
+			break
+		}
+
+		if src[i] != '\\' || src[i+1] != 'U' {
+			i++
+			continue
+		}
+
+		n, j, ok := parseUint(src[i+2:i+10], 16, 32)
+		if !ok {
+			i += 2 + j
+			continue
+		}
+
+		if f < i {
+			e += copy(dst[e:], src[f:i])
+		}
+
+		if n < utf8.RuneSelf {
+			dst[e] = byte(n)
+			e++
+		} else {
+			e += utf8.EncodeRune(dst[e:], rune(n))
+		}
+		i += 10
+		f = i
+	}
+
+	if f < len(src) {
+		e += copy(dst[e:], src[f:])
+	}
+
+	return e
+}
+
+func Utf16Encode[T typez.StrOrBytes](s T) []byte {
+	src := UnsafeStrOrBytesToString(s)
+
+	b := make([]byte, 0, utf8.RuneCountInString(src)*6)
+	var j, f int
+
+	for i := 0; i < len(src); {
+		b = append(b, '\\', 'u', '0', '0', '0', '0')
+
+		f = j + 2
+		j += 6
+		if bt := src[i]; bt < utf8.RuneSelf {
+			appendInt64(int64(bt), 16, b[f:j])
+			toUpper(b[f:j])
+
+			i++
+			continue
+		}
+
+		c, size := utf8.DecodeRuneInString(src[i:])
+		if c == utf8.RuneError {
+			copy(b[f:j], "FFFD")
+			i += size
+			continue
+		}
+
+		if c < 0x10000 {
+			appendInt64(int64(c), 16, b[f:j])
+			toUpper(b[f:j])
+		} else {
+			r1, r2 := utf16.EncodeRune(c)
+			appendInt64(int64(r1), 16, b[f:j])
+			toUpper(b[f:j])
+
+			b = append(b, '\\', 'u', '0', '0', '0', '0')
+			f = j + 2
+			j += 6
+
+			appendInt64(int64(r2), 16, b[f:j])
+			toUpper(b[f:j])
+		}
+
+		i += size
+	}
+
+	return b
+}
+
+func Utf16Decode(src, dst []byte) int {
+	var e, f int
+	for i := 0; i < len(src); {
+		if len(src)-i < 6 {
+			break
+		}
+
+		if src[i] != '\\' || src[i+1] != 'u' {
+			i++
+			continue
+		}
+
+		n1, j, ok := parseUint(src[i+2:i+6], 16, 32)
+		if !ok {
+			i += 2 + j
+			continue
+		}
+
+		if f < i {
+			e += copy(dst[e:], src[f:i])
+			f = i
+		}
+
+		if n1 < 0xd800 || n1 > 0xe000 {
+			e += utf8.EncodeRune(dst[e:], rune(n1))
+			i += 6
+			f = i
+			continue
+		}
+
+		if n1 >= 0xd800 && n1 < 0xdc00 {
+			i += 6
+			if len(src)-i < 6 {
+				break
+			}
+
+			if src[i] != '\\' || src[i+1] != 'u' {
+				i++
+				continue
+			}
+
+			n2, j, ok := parseUint(src[i+2:i+6], 16, 32)
+			if !ok {
+				i += 2 + j
+				continue
+			}
+
+			if n2 >= 0xdc00 && n2 < 0xe000 {
+				r := utf16.DecodeRune(rune(n1), rune(n2))
+				e += utf8.EncodeRune(dst[e:], r)
+
+				i += 6
+				f = i
+				continue
+			}
+
+			i += 6
+		}
+
+	}
+
+	if f < len(src) {
+		e += copy(dst[e:], src[f:])
+	}
+
+	return e
 }
 
 // OctalEncodeToString returns the octal encoding of s
