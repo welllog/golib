@@ -17,3 +17,4 @@
 * ``mathz`` math相关函数
 * ``ctxz`` ctx相关函数
 * ``sortz`` sort相关函数
+* ``goz`` goroutine相关函数

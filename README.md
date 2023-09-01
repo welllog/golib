@@ -17,3 +17,4 @@ a tool library based on Go standard library, designed for performance, flexibili
 * ``mathz`` math related functions
 * ``ctxz`` ctx related functions
 * ``sortz`` sort related functions
+* ``goz`` goroutine related functions
