@@ -59,9 +59,9 @@ func TestIdGenerator(t *testing.T) {
 }
 
 func TestParseBase32(t *testing.T) {
-	max := 1000000
-	ids := make([]ID, max)
-	for i := 0; i < max; i++ {
+	maxn := 1000000
+	ids := make([]ID, maxn)
+	for i := 0; i < maxn; i++ {
 		ids[i] = ID(i)
 	}
 

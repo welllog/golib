@@ -15,34 +15,34 @@ const (
 
 // Max returns the maximum value in a slice of numbers.
 func Max[T typez.Ordered](n ...T) T {
-	var max T
+	var ret T
 	if len(n) == 0 {
-		return max
+		return ret
 	}
 
-	max = n[0]
+	ret = n[0]
 	for _, v := range n[1:] {
-		if v > max {
-			max = v
+		if v > ret {
+			ret = v
 		}
 	}
-	return max
+	return ret
 }
 
 // Min returns the minimum value in a slice of numbers.
 func Min[T typez.Ordered](n ...T) T {
-	var min T
+	var ret T
 	if len(n) == 0 {
-		return min
+		return ret
 	}
 
-	min = n[0]
+	ret = n[0]
 	for _, v := range n[1:] {
-		if v < min {
-			min = v
+		if v < ret {
+			ret = v
 		}
 	}
-	return min
+	return ret
 }
 
 // Sum returns the sum of a slice of numbers.

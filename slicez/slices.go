@@ -244,9 +244,9 @@ func Copy[T any](s []T, start, length int) []T {
 		start = 0
 	}
 
-	max := l - start
-	if length < 0 || length > max {
-		length = max
+	maxn := l - start
+	if length < 0 || length > maxn {
+		length = maxn
 	}
 
 	return append([]T(nil), s[start:start+length]...)

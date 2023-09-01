@@ -251,8 +251,8 @@ func TestRemoveRunes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		max := tt.max
-		testz.Equal(t, tt.result, RemoveRunes(tt.str, removeFunc(max)), "", tt.str, tt.max)
+		maxn := tt.max
+		testz.Equal(t, tt.result, RemoveRunes(tt.str, removeFunc(maxn)), "", tt.str, tt.max)
 	}
 }
 
