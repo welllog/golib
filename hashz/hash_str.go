@@ -132,10 +132,10 @@ func SDBMHash64[T typez.StrOrBytes](s T) uint64 {
 
 // PJWHash PJW Hash Function
 func PJWHash[T typez.StrOrBytes](s T) uint32 {
-	var BitsInUnignedInt uint32 = 4 * 8
-	var ThreeQuarters = (BitsInUnignedInt * 3) / 4
-	var OneEighth = BitsInUnignedInt / 8
-	var HighBits uint32 = (0xFFFFFFFF) << (BitsInUnignedInt - OneEighth)
+	var bitsInUnsignedInt uint32 = 4 * 8
+	var ThreeQuarters = (bitsInUnsignedInt * 3) / 4
+	var OneEighth = bitsInUnsignedInt / 8
+	var HighBits uint32 = (0xFFFFFFFF) << (bitsInUnsignedInt - OneEighth)
 	var hash uint32 = 0
 	var test uint32 = 0
 	for i := 0; i < len(s); i++ {
@@ -149,10 +149,10 @@ func PJWHash[T typez.StrOrBytes](s T) uint32 {
 
 // PJWHash64 PJW Hash Function
 func PJWHash64[T typez.StrOrBytes](s T) uint64 {
-	var BitsInUnignedInt uint64 = 4 * 8
-	var ThreeQuarters = (BitsInUnignedInt * 3) / 4
-	var OneEighth = BitsInUnignedInt / 8
-	var HighBits uint64 = (0xFFFFFFFF) << (BitsInUnignedInt - OneEighth)
+	var bitsInUnsignedInt uint64 = 4 * 8
+	var ThreeQuarters = (bitsInUnsignedInt * 3) / 4
+	var OneEighth = bitsInUnsignedInt / 8
+	var HighBits uint64 = (0xFFFFFFFF) << (bitsInUnsignedInt - OneEighth)
 	var hash uint64 = 0
 	var test uint64 = 0
 	for i := 0; i < len(s); i++ {

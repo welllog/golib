@@ -187,7 +187,7 @@ func TestLongToIPv4(t *testing.T) {
 	}
 }
 
-func TestOctalEncode(t *testing.T) {
+func TestOctalFormat(t *testing.T) {
 	tests1 := []struct {
 		s string
 		e []byte
@@ -198,7 +198,7 @@ func TestOctalEncode(t *testing.T) {
 		{"👋，世界，welcome", []byte(`\360\237\221\213\357\274\214\344\270\226\347\225\214\357\274\214\167\145\154\143\157\155\145`)},
 	}
 	for _, v := range tests1 {
-		testz.Equal(t, v.e, OctalEncode(v.s), v.s)
+		testz.Equal(t, v.e, OctalFormat(v.s), v.s)
 	}
 
 	tests2 := []struct {
@@ -211,11 +211,11 @@ func TestOctalEncode(t *testing.T) {
 		{[]byte("👋，世界，welcome"), []byte(`\360\237\221\213\357\274\214\344\270\226\347\225\214\357\274\214\167\145\154\143\157\155\145`)},
 	}
 	for _, v := range tests2 {
-		testz.Equal(t, v.e, OctalEncode(v.s), string(v.s))
+		testz.Equal(t, v.e, OctalFormat(v.s), string(v.s))
 	}
 }
 
-func TestOctalDecode(t *testing.T) {
+func TestOctalParseToString(t *testing.T) {
 	tests1 := []struct {
 		s string
 		e []byte
@@ -226,7 +226,7 @@ func TestOctalDecode(t *testing.T) {
 		{`\360\237\221\213\357\274\214\344\270\226\347\225\214\357\274\214\167\145\154\143\157\155\145`, []byte("👋，世界，welcome")},
 	}
 	for _, v := range tests1 {
-		testz.Equal(t, v.e, OctalDecode(v.s), v.s)
+		testz.Equal(t, v.e, []byte(OctalParseToString(v.s)), v.s)
 	}
 
 	tests2 := []struct {
@@ -239,11 +239,11 @@ func TestOctalDecode(t *testing.T) {
 		{[]byte(`\360\237\221\213\357\274\214\344\270\226\347\225\214\357\274\214\167\145\154\143\157\155\145`), []byte("👋，世界，welcome")},
 	}
 	for _, v := range tests2 {
-		testz.Equal(t, v.e, OctalDecode(v.s), string(v.s))
+		testz.Equal(t, v.e, []byte(OctalParseToString(v.s)), string(v.s))
 	}
 }
 
-func TestOctalDecodeInPlace(t *testing.T) {
+func TestOctalParse(t *testing.T) {
 	tests := []struct {
 		s []byte
 		e []byte
@@ -254,8 +254,82 @@ func TestOctalDecodeInPlace(t *testing.T) {
 		{[]byte(`\360\237\221\213\357\274\214\344\270\226\347\225\214\357\274\214\167\145\154\143\157\155\145`), []byte("👋，世界，welcome")},
 	}
 	for _, v := range tests {
-		n := OctalDecodeInPlace(v.s)
+		n := OctalParse(v.s, v.s)
 		testz.Equal(t, v.e, v.s[:n], string(v.e))
+	}
+}
+
+func TestHexFormat(t *testing.T) {
+	tests := []struct {
+		s string
+		w string
+	}{
+		{
+			s: "hello world",
+			w: "\\x68\\x65\\x6C\\x6C\\x6F\\x20\\x77\\x6F\\x72\\x6C\\x64",
+		},
+		{
+			s: "哈哈😄",
+			w: "\\xE5\\x93\\x88\\xE5\\x93\\x88\\xF0\\x9F\\x98\\x84",
+		},
+		{
+			s: "\\xhello哈哈😄wor^ld$%",
+			w: "\\x5C\\x78\\x68\\x65\\x6C\\x6C\\x6F\\xE5\\x93\\x88\\xE5\\x93\\x88\\xF0\\x9F\\x98\\x84\\x77\\x6F\\x72\\x5E\\x6C\\x64\\x24\\x25",
+		},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.w, string(HexFormat(tt.s)), tt.s)
+		testz.Equal(t, tt.s, HexParseToString(tt.w), tt.w)
+	}
+}
+
+func TestUnicodeFormat(t *testing.T) {
+	tests := []struct {
+		s string
+		w string
+	}{
+		{
+			s: "hello world",
+			w: "\\U00000068\\U00000065\\U0000006C\\U0000006C\\U0000006F\\U00000020\\U00000077\\U0000006F\\U00000072\\U0000006C\\U00000064",
+		},
+		{
+			s: "哈哈😄",
+			w: "\\U000054C8\\U000054C8\\U0001F604",
+		},
+		{
+			s: "\\xhello哈哈😄wor^ld$%",
+			w: "\\U0000005C\\U00000078\\U00000068\\U00000065\\U0000006C\\U0000006C\\U0000006F\\U000054C8\\U000054C8\\U0001F604\\U00000077\\U0000006F\\U00000072\\U0000005E\\U0000006C\\U00000064\\U00000024\\U00000025",
+		},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.w, string(UnicodeFormat(tt.s)), tt.s)
+		testz.Equal(t, tt.s, UnicodeParseToString(tt.w), tt.w)
+	}
+}
+
+func TestUtf16Format(t *testing.T) {
+	tests := []struct {
+		s, w string
+	}{
+		{
+			s: "hello world",
+			w: "\\u0068\\u0065\\u006C\\u006C\\u006F\\u0020\\u0077\\u006F\\u0072\\u006C\\u0064",
+		},
+		{
+			s: "哈哈😄",
+			w: "\\u54C8\\u54C8\\uD83D\\uDE04",
+		},
+		{
+			s: "\\xhello哈哈😄wor^ld$%",
+			w: "\\u005C\\u0078\\u0068\\u0065\\u006C\\u006C\\u006F\\u54C8\\u54C8\\uD83D\\uDE04\\u0077\\u006F\\u0072\\u005E\\u006C\\u0064\\u0024\\u0025",
+		},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.w, string(Utf16Format(tt.s)), tt.s)
+		testz.Equal(t, tt.s, Utf16ParseToString(tt.w), tt.w)
 	}
 }
 
@@ -322,4 +396,98 @@ func BenchmarkHexEncodeToString(b *testing.B) {
 			HexEncodeToString(s)
 		}
 	})
+}
+
+func TestByte2Octal(t *testing.T) {
+	tests := []struct {
+		b    byte
+		want string
+	}{
+		{
+			b:    0,
+			want: "000",
+		},
+		{
+			b:    255,
+			want: "377",
+		},
+		{
+			b:    1,
+			want: "001",
+		},
+		{
+			b:    2,
+			want: "002",
+		},
+		{
+			b:    42,
+			want: "052",
+		},
+	}
+
+	buf := make([]byte, 3)
+	for _, tt := range tests {
+		appendUint(buf, uint64(tt.b), 8)
+		if string(buf) != tt.want {
+			t.Errorf("byte2Octal(%v) = %v; want %v", tt.b, string(buf), tt.want)
+		}
+	}
+}
+
+func TestByteToHex(t *testing.T) {
+	tests := []struct {
+		b    byte
+		want string
+	}{
+		{
+			b:    0,
+			want: "00",
+		},
+		{
+			b:    255,
+			want: "ff",
+		},
+		{
+			b:    1,
+			want: "01",
+		},
+		{
+			b:    2,
+			want: "02",
+		},
+		{
+			b:    42,
+			want: "2a",
+		},
+	}
+
+	buf := make([]byte, 2)
+	for _, tt := range tests {
+		appendUint(buf, uint64(tt.b), 16)
+		if string(buf) != tt.want {
+			t.Errorf("byteToHex(%v) = %v; want %v", tt.b, string(buf), tt.want)
+		}
+	}
+}
+
+func TestUpper(t *testing.T) {
+	s := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	s1 := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	for i := 0; i < len(s); i++ {
+		if upper(s[i]) != s1[i] {
+			t.Errorf("upper(%v) = %v; want %v", s[i], upper(s[i]), s1[i])
+		}
+	}
+}
+
+func TestLower(t *testing.T) {
+	s := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	s1 := "0123456789abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz"
+
+	for i := 0; i < len(s); i++ {
+		if lower(s[i]) != s1[i] {
+			t.Errorf("upper(%v) = %v; want %v", s[i], upper(s[i]), s1[i])
+		}
+	}
 }
