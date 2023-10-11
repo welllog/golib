@@ -7,7 +7,7 @@ import (
 )
 
 func TestBits_Add(t *testing.T) {
-	m := NewBits()
+	m := Bits{}
 	testz.Equal(t, 0, m.Len(), "init bit map len must be zero")
 
 	m.Add(1)
@@ -23,7 +23,7 @@ func TestBits_Add(t *testing.T) {
 }
 
 func TestBits_Contains(t *testing.T) {
-	m := NewBits()
+	m := Bits{}
 
 	tests := []struct {
 		add uint
@@ -47,7 +47,7 @@ func TestBits_Contains(t *testing.T) {
 }
 
 func TestBits_Remove(t *testing.T) {
-	m := NewBits()
+	m := Bits{}
 
 	tests := []struct {
 		add uint
@@ -79,17 +79,16 @@ func TestBits_Remove(t *testing.T) {
 }
 
 func TestBits_Grow(t *testing.T) {
-	m := NewBits()
+	m := Bits{}
 	tests := []struct {
-		grow int
+		grow uint
 		cap  int
 	}{
-		{-1, 0},
 		{0, 64},
 		{64, 128},
 		{128, 192},
 		{0, 192},
-		{-1, 192},
+		{3, 192},
 		{100, 192},
 		{192, 256},
 	}
@@ -101,7 +100,7 @@ func TestBits_Grow(t *testing.T) {
 }
 
 func TestBits_Iter(t *testing.T) {
-	m := NewBits()
+	m := Bits{}
 	iter := m.Iter()
 
 	var count int
@@ -143,7 +142,7 @@ func TestBits_Iter(t *testing.T) {
 func BenchmarkBits_Add(b *testing.B) {
 	b.Run("add", func(b *testing.B) {
 		b.ReportAllocs()
-		m := NewBits()
+		m := Bits{}
 		for i := 0; i < b.N; i++ {
 			m.Add(uint(i))
 		}
@@ -151,7 +150,7 @@ func BenchmarkBits_Add(b *testing.B) {
 
 	b.Run("add_with_grow", func(b *testing.B) {
 		b.ReportAllocs()
-		m := NewBits()
+		m := Bits{}
 		m.Grow(500000000)
 		for i := 0; i < b.N; i++ {
 			m.Add(uint(i))

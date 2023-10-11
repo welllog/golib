@@ -12,12 +12,8 @@ type Bits struct {
 }
 
 // Grow grows the set to the given size.
-func (b *Bits) Grow(n int) {
-	if n < 0 {
-		return
-	}
-
-	index := n >> 6
+func (b *Bits) Grow(n uint) {
+	index := int(n >> 6)
 	if index >= len(b.set) {
 		grow := index + 1 - len(b.set)
 		b.set = append(b.set, make([]uint64, grow)...)
