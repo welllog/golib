@@ -29,27 +29,13 @@ var (
 
 // Encrypt encrypts plainText with secret (openssl aes-256-cbc implementation).
 func Encrypt[T, E typez.StrOrBytes](plainText T, secret E) ([]byte, error) {
-	var salt [_SALT_LEN]byte
-	var cred [_CRED_LEN]byte
-	err := fillSaltAndCred(salt[:], cred[:], secret)
+	cipherText, err := SaltBySecretCBCEncrypt(plainText, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[_KEY_LEN:]  // 16 bytes, same as block size
-
-	/*
-		|Salted__(8 byte)|salt(8 byte)|plaintext|
-	*/
-	dst := make([]byte, aes.BlockSize+AESCBCEncryptLen(plainText))
-	copy(dst[0:], fixedSaltHeader)
-	copy(dst[8:], salt[:])
-
-	_ = AESCBCEncrypt(dst[aes.BlockSize:], strz.UnsafeStrOrBytesToBytes(plainText), key, iv)
-
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(dst)))
-	base64.StdEncoding.Encode(ret, dst)
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(cipherText)))
+	base64.StdEncoding.Encode(ret, cipherText)
 
 	return ret, nil
 }
@@ -61,59 +47,18 @@ func Decrypt[T, E typez.StrOrBytes](cipherText T, secret E) ([]byte, error) {
 		return nil, err
 	}
 
-	if len(src) < 2*aes.BlockSize || len(src)&blockSizeMask != 0 {
-		return nil, errors.New("cipherText text length illegal")
-	}
-
-	if !bytes.Equal(src[:8], fixedSaltHeader) {
-		return nil, errors.New("check cbc fixed header error")
-	}
-
-	var cred [_CRED_LEN]byte
-	fillCred(cred[:], src[8:aes.BlockSize], secret)
-
-	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[_KEY_LEN:]  // 16 bytes, same as block size
-
-	// reuse src
-	dst := src[aes.BlockSize:]
-	n, err := AESCBCDecrypt(dst, dst, key, iv)
-	if err != nil {
-		return nil, err
-	}
-
-	return dst[:n], nil
+	return SaltBySecretCBCDecrypt(src, secret, true)
 }
 
 // GCMEncrypt encrypts plainText with secret and additionalData
 func GCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D) ([]byte, error) {
-	var salt [_SALT_LEN]byte
-	var cred [_CRED_LEN]byte
-	err := fillSaltAndCred(salt[:], cred[:], secret)
+	cipherText, err := SaltBySecretGCMEncrypt(plainText, secret, additionalData)
 	if err != nil {
 		return nil, err
 	}
 
-	key := cred[:_KEY_LEN]
-	nonce := cred[_KEY_LEN : _KEY_LEN+nonceSize]
-
-	/*
-		|Salted__(8 byte)|salt(8 byte)|plaintext|tag(16 byte)|
-	*/
-	dst := make([]byte, aes.BlockSize+AESGCMEncryptLen(plainText))
-	copy(dst[0:], fixedSaltHeader)
-	copy(dst[8:], salt[:])
-
-	_ = AESGCMEncrypt(
-		dst[aes.BlockSize:],
-		strz.UnsafeStrOrBytesToBytes(plainText),
-		key,
-		nonce,
-		strz.UnsafeStrOrBytesToBytes(additionalData),
-	)
-
-	ret := make([]byte, hex.EncodedLen(len(dst)))
-	hex.Encode(ret, dst)
+	ret := make([]byte, hex.EncodedLen(len(cipherText)))
+	hex.Encode(ret, cipherText)
 	return ret, nil
 }
 
@@ -124,27 +69,7 @@ func GCMDecrypt[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalData
 		return nil, fmt.Errorf("hex decode error: %w", err)
 	}
 
-	if len(cipherText) < aes.BlockSize {
-		return nil, errors.New("cipherText text length illegal")
-	}
-
-	if !bytes.Equal(src[:8], fixedSaltHeader) {
-		return nil, errors.New("check fixed header error")
-	}
-
-	var cred [_CRED_LEN]byte
-	fillCred(cred[:], src[8:aes.BlockSize], secret)
-
-	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
-	nonce := cred[_KEY_LEN : _KEY_LEN+nonceSize]
-
-	// reuse src
-	dst := src[aes.BlockSize:]
-	err = AESGCMDecrypt(dst, dst, key, nonce, strz.UnsafeStrOrBytesToBytes(additionalData))
-	if err != nil {
-		return nil, err
-	}
-	return dst[:AESGCMDecryptLen(dst)], nil
+	return SaltBySecretGCMDecrypt(src, secret, additionalData, true)
 }
 
 // EncryptStreamTo encrypts stream to out with secret
@@ -221,6 +146,118 @@ func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, secret
 	}
 
 	return nil
+}
+
+// SaltBySecretCBCEncrypt
+func SaltBySecretCBCEncrypt[T, E typez.StrOrBytes](plainText T, secret E) ([]byte, error) {
+	var salt [_SALT_LEN]byte
+	var cred [_CRED_LEN]byte
+	err := fillSaltAndCred(salt[:], cred[:], secret)
+	if err != nil {
+		return nil, err
+	}
+
+	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
+	iv := cred[_KEY_LEN:]  // 16 bytes, same as block size
+
+	/*
+		|Salted__(8 byte)|salt(8 byte)|plaintext|
+	*/
+	dst := make([]byte, aes.BlockSize+AESCBCEncryptLen(plainText))
+	copy(dst[0:], fixedSaltHeader)
+	copy(dst[8:], salt[:])
+
+	_ = AESCBCEncrypt(dst[aes.BlockSize:], strz.UnsafeStrOrBytesToBytes(plainText), key, iv)
+
+	return dst, nil
+}
+
+// SaltBySecretCBCDecrypt
+func SaltBySecretCBCDecrypt[E typez.StrOrBytes](cipherText []byte, secret E, reuseCipherText bool) ([]byte, error) {
+	if len(cipherText) < 2*aes.BlockSize || len(cipherText)&blockSizeMask != 0 {
+		return nil, errors.New("cipherText text length illegal")
+	}
+
+	if !bytes.Equal(cipherText[:8], fixedSaltHeader) {
+		return nil, errors.New("check cbc fixed header error")
+	}
+
+	var cred [_CRED_LEN]byte
+	fillCred(cred[:], cipherText[8:aes.BlockSize], secret)
+
+	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
+	iv := cred[_KEY_LEN:]  // 16 bytes, same as block size
+
+	cipherText = cipherText[aes.BlockSize:]
+	dst := cipherText
+	if !reuseCipherText {
+		dst = make([]byte, len(dst))
+	}
+
+	n, err := AESCBCDecrypt(dst, cipherText, key, iv)
+	if err != nil {
+		return nil, err
+	}
+
+	return dst[:n], nil
+}
+
+// SaltBySecretGCMEncrypt
+func SaltBySecretGCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D) ([]byte, error) {
+	var salt [_SALT_LEN]byte
+	var cred [_CRED_LEN]byte
+	err := fillSaltAndCred(salt[:], cred[:], secret)
+	if err != nil {
+		return nil, err
+	}
+
+	key := cred[:_KEY_LEN]
+	nonce := cred[_KEY_LEN : _KEY_LEN+nonceSize]
+
+	/*
+		|Salted__(8 byte)|salt(8 byte)|plaintext|tag(16 byte)|
+	*/
+	dst := make([]byte, aes.BlockSize+AESGCMEncryptLen(plainText))
+	copy(dst[0:], fixedSaltHeader)
+	copy(dst[8:], salt[:])
+
+	_ = AESGCMEncrypt(
+		dst[aes.BlockSize:],
+		strz.UnsafeStrOrBytesToBytes(plainText),
+		key,
+		nonce,
+		strz.UnsafeStrOrBytesToBytes(additionalData),
+	)
+
+	return dst, nil
+}
+
+// SaltBySecretGCMDecrypt
+func SaltBySecretGCMDecrypt[E, D typez.StrOrBytes](cipherText []byte, secret E, additionalData D, reuseCipherText bool) ([]byte, error) {
+	if len(cipherText) < aes.BlockSize {
+		return nil, errors.New("cipherText text length illegal")
+	}
+
+	if !bytes.Equal(cipherText[:8], fixedSaltHeader) {
+		return nil, errors.New("check fixed header error")
+	}
+
+	var cred [_CRED_LEN]byte
+	fillCred(cred[:], cipherText[8:aes.BlockSize], secret)
+
+	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
+	nonce := cred[_KEY_LEN : _KEY_LEN+nonceSize]
+
+	cipherText = cipherText[aes.BlockSize:]
+	dst := cipherText
+	if !reuseCipherText {
+		dst = make([]byte, len(dst))
+	}
+	err := AESGCMDecrypt(dst, cipherText, key, nonce, strz.UnsafeStrOrBytesToBytes(additionalData))
+	if err != nil {
+		return nil, err
+	}
+	return dst[:AESGCMDecryptLen(dst)], nil
 }
 
 func fillSaltAndCred[E typez.StrOrBytes](salt, cred []byte, secret E) error {
