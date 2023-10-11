@@ -16,13 +16,31 @@ func NewBits() *Bits {
 	return &Bits{}
 }
 
-// Add adds a number to the set.
-func (b *Bits) Add(num uint) {
-	index, bit := num/64, num%64
-	grow := int(index) - len(b.set) + 1
-	if grow > 0 {
+// Grow grows the set to the given size.
+func (b *Bits) Grow(n int) {
+	if n < 0 {
+		return
+	}
+
+	index := n >> 6
+	if index >= len(b.set) {
+		grow := index + 1 - len(b.set)
 		b.set = append(b.set, make([]uint64, grow)...)
 	}
+}
+
+// Add adds a number to the set.
+func (b *Bits) Add(num uint) {
+	// num/64, num%64
+	index, bit := int(num>>6), num&63
+	if index >= len(b.set) {
+		grow := index + 1 - len(b.set)
+		b.set = append(b.set, make([]uint64, grow)...)
+		b.set[index] |= 1 << bit
+		b.length++
+		return
+	}
+
 	if b.set[index]&(1<<bit) == 0 {
 		b.set[index] |= 1 << bit
 		b.length++
@@ -31,8 +49,9 @@ func (b *Bits) Add(num uint) {
 
 // Remove removes a number from the set.
 func (b *Bits) Remove(num uint) {
-	index, bit := num/64, num%64
-	if int(index) < len(b.set) && (b.set[index]&(1<<bit)) != 0 {
+	// num / 64, num % 64
+	index, bit := int(num>>6), num&63
+	if index < len(b.set) && (b.set[index]&(1<<bit)) != 0 {
 		b.set[index] &= ^(1 << bit)
 		b.length--
 	}
@@ -40,13 +59,19 @@ func (b *Bits) Remove(num uint) {
 
 // Contains returns true if the set contains the number.
 func (b *Bits) Contains(num uint) bool {
-	index, bit := num/64, num%64
-	return int(index) < len(b.set) && (b.set[index]&(1<<bit)) != 0
+	// num / 64, num % 64
+	index, bit := int(num>>6), num&63
+	return index < len(b.set) && (b.set[index]&(1<<bit)) != 0
 }
 
 // Len returns the length of the set.
 func (b *Bits) Len() int {
 	return b.length
+}
+
+// Cap returns the capacity of the set.
+func (b *Bits) Cap() int {
+	return len(b.set) << 6
 }
 
 // String returns a string representation of the set.
@@ -69,4 +94,45 @@ func (b *Bits) String() string {
 	buf.WriteByte('}')
 	_, _ = fmt.Fprintf(&buf, "\nLength: %d", b.length)
 	return buf.String()
+}
+
+// Iter returns a new BitsIter.
+func (b *Bits) Iter() BitsIter {
+	return BitsIter{bits: b}
+}
+
+// BitsIter is an iterator for Bits.
+type BitsIter struct {
+	bits *Bits
+	i    int
+	j    int
+	read bool
+}
+
+// Next returns true if there is a next value.
+func (bi *BitsIter) Next() bool {
+	if bi.read {
+		bi.read = false
+		bi.j++
+	}
+
+	for bi.i < len(bi.bits.set) {
+		for bi.j < 64 {
+			if bi.bits.set[bi.i]&(1<<bi.j) != 0 {
+				bi.read = true
+				return true
+			}
+			bi.j++
+		}
+
+		bi.i++
+		bi.j = 0
+	}
+
+	return false
+}
+
+// Value returns the current value.
+func (bi *BitsIter) Value() uint {
+	return uint(bi.i<<6 + bi.j)
 }
