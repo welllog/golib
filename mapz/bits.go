@@ -11,11 +11,6 @@ type Bits struct {
 	set    []uint64
 }
 
-// NewBits returns a new Bits.
-func NewBits() *Bits {
-	return &Bits{}
-}
-
 // Grow grows the set to the given size.
 func (b *Bits) Grow(n int) {
 	if n < 0 {
