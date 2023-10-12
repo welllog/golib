@@ -94,3 +94,13 @@ func (s *SafeKV[K, V]) Map(f func(map[K]V)) {
 	f(s.m)
 	s.mu.Unlock()
 }
+
+// GetWithCall calls f with the value associated with the key if the key exists
+func (s *SafeKV[K, V]) GetWithCall(key K, f func(V)) {
+	s.mu.RLock()
+	value, ok := s.m[key]
+	if ok {
+		f(value)
+	}
+	s.mu.RUnlock()
+}
