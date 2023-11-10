@@ -1,4 +1,4 @@
-package mapz
+package dsz
 
 import (
 	"testing"
