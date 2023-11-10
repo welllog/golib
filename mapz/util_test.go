@@ -11,8 +11,11 @@ func TestKeys(t *testing.T) {
 	if len(keys) != 2 {
 		t.Fatal("keys len not 2")
 	}
-	if keys[0] != "a" || keys[1] != "b" {
-		t.Fatal("keys not match")
+
+	for _, k := range keys {
+		if k != "a" && k != "b" {
+			t.Fatal("keys not match")
+		}
 	}
 }
 
@@ -25,7 +28,10 @@ func TestValues(t *testing.T) {
 	if len(values) != 2 {
 		t.Fatal("values len not 2")
 	}
-	if values[0] != 1 || values[1] != 2 {
-		t.Fatal("values not match")
+
+	for _, v := range values {
+		if v != 1 && v != 2 {
+			t.Fatal("values not match")
+		}
 	}
 }
