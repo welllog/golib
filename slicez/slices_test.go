@@ -765,3 +765,47 @@ func TestCopy(t *testing.T) {
 		})
 	}
 }
+
+func TestValues(t *testing.T) {
+	type args struct {
+		s  []int
+		fn func(int) int
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{
+			name: "Values with positive numbers",
+			args: args{
+				s:  []int{1, 2, 3, 4, 5},
+				fn: func(i int) int { return i * 2 },
+			},
+			want: []int{2, 4, 6, 8, 10},
+		},
+		{
+			name: "Values with negative numbers",
+			args: args{
+				s:  []int{-1, -2, -3, -4, -5},
+				fn: func(i int) int { return i * 2 },
+			},
+			want: []int{-2, -4, -6, -8, -10},
+		},
+		{
+			name: "Values with empty slice",
+			args: args{
+				s:  []int{},
+				fn: func(i int) int { return i * 2 },
+			},
+			want: []int{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Values(tt.args.s, tt.args.fn); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Values() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

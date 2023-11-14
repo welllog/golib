@@ -251,3 +251,12 @@ func Copy[T any](s []T, start, length int) []T {
 
 	return append([]T(nil), s[start:start+length]...)
 }
+
+// Values returns a new slice containing the values returned by applying fn to each element of s.
+func Values[T, V any](s []T, fn func(T) V) []V {
+	ret := make([]V, len(s))
+	for i, v := range s {
+		ret[i] = fn(v)
+	}
+	return ret
+}

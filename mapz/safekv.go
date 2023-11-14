@@ -58,11 +58,11 @@ func (s *SafeKV[K, V]) Len() int {
 	return l
 }
 
-// Range calls f sequentially for each key and value present in the map.
-func (s *SafeKV[K, V]) Range(f func(key K, value V) bool) {
+// Range calls fn sequentially for each key and value present in the map.
+func (s *SafeKV[K, V]) Range(fn func(key K, value V) bool) {
 	s.mu.RLock()
 	for k, v := range s.m {
-		if !f(k, v) {
+		if !fn(k, v) {
 			break
 		}
 	}
@@ -100,19 +100,19 @@ func (s *SafeKV[K, V]) SetX(key K, value V) bool {
 	return isSet
 }
 
-// Map calls f with the map
-func (s *SafeKV[K, V]) Map(f func(map[K]V)) {
+// Map calls fn with the map
+func (s *SafeKV[K, V]) Map(fn func(map[K]V)) {
 	s.mu.Lock()
-	f(s.m)
+	fn(s.m)
 	s.mu.Unlock()
 }
 
-// GetWithCall calls f with the value associated with the key if the key exists
-func (s *SafeKV[K, V]) GetWithCall(key K, f func(V)) {
+// GetWithCall calls fn with the value associated with the key if the key exists
+func (s *SafeKV[K, V]) GetWithCall(key K, fn func(V)) {
 	s.mu.RLock()
 	value, ok := s.m[key]
 	if ok {
-		f(value)
+		fn(value)
 	}
 	s.mu.RUnlock()
 }

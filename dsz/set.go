@@ -47,10 +47,10 @@ func (s Set[T]) Values(dst []T) []T {
 	return dst
 }
 
-// Range calls f sequentially for each value present in the set.
-func (s Set[T]) Range(f func(T)) {
+// Range calls fn sequentially for each value present in the set.
+func (s Set[T]) Range(fn func(T)) {
 	for k := range s {
-		f(k)
+		fn(k)
 	}
 }
 
@@ -61,10 +61,10 @@ func (s Set[T]) Clear() {
 	}
 }
 
-// Filter deletes all values in s that do not satisfy f.
-func (s Set[T]) Filter(f func(T) bool) {
+// Filter deletes all values in s that do not satisfy fn.
+func (s Set[T]) Filter(fn func(T) bool) {
 	for k := range s {
-		if !f(k) {
+		if !fn(k) {
 			delete(s, k)
 		}
 	}
