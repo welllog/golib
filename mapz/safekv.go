@@ -24,6 +24,18 @@ func (s *SafeKV[K, V]) Get(key K) (V, bool) {
 	return value, ok
 }
 
+// GetWithMap returns the value associated with the key and whether the key existed
+func (s *SafeKV[K, V]) GetWithMap(m map[K]V) {
+	s.mu.RLock()
+	for k := range m {
+		c, ok := s.m[k]
+		if ok {
+			m[k] = c
+		}
+	}
+	s.mu.RUnlock()
+}
+
 // Set sets the value associated with the key
 func (s *SafeKV[K, V]) Set(key K, value V) {
 	s.mu.Lock()
