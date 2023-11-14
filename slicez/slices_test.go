@@ -768,8 +768,8 @@ func TestCopy(t *testing.T) {
 
 func TestValues(t *testing.T) {
 	type args struct {
-		s  []int
 		fn func(int) int
+		ss [][]int
 	}
 	tests := []struct {
 		name string
@@ -777,33 +777,41 @@ func TestValues(t *testing.T) {
 		want []int
 	}{
 		{
-			name: "Values with positive numbers",
+			name: "Values with multiple slices",
 			args: args{
-				s:  []int{1, 2, 3, 4, 5},
 				fn: func(i int) int { return i * 2 },
+				ss: [][]int{{1, 2, 3}, {4, 5, 6}},
 			},
-			want: []int{2, 4, 6, 8, 10},
+			want: []int{2, 4, 6, 8, 10, 12},
 		},
 		{
-			name: "Values with negative numbers",
+			name: "Values with single slice",
 			args: args{
-				s:  []int{-1, -2, -3, -4, -5},
 				fn: func(i int) int { return i * 2 },
+				ss: [][]int{{1, 2, 3}},
 			},
-			want: []int{-2, -4, -6, -8, -10},
+			want: []int{2, 4, 6},
 		},
 		{
 			name: "Values with empty slice",
 			args: args{
-				s:  []int{},
 				fn: func(i int) int { return i * 2 },
+				ss: [][]int{{}},
+			},
+			want: []int{},
+		},
+		{
+			name: "Values with no slices",
+			args: args{
+				fn: func(i int) int { return i * 2 },
+				ss: [][]int{},
 			},
 			want: []int{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Values(tt.args.s, tt.args.fn); !reflect.DeepEqual(got, tt.want) {
+			if got := Values(tt.args.fn, tt.args.ss...); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Values() = %v, want %v", got, tt.want)
 			}
 		})
