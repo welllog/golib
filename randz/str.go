@@ -4,7 +4,9 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+	"unsafe"
 )
 
 const (
@@ -12,11 +14,43 @@ const (
 	CHAR_LOWER_SET = "abcdefghjkmnpqrstuvwxyz23456789"
 )
 
-var defStrGen = NewStrGenerator(CHAR_SET)
+var defStrGen unsafe.Pointer
+var defRandSource = NewLockRandSource(time.Now().UnixNano())
+
+func init() {
+	SetStrGeneratorCharSet(CHAR_SET)
+}
+
+func SetStrGeneratorCharSet(charSet string) {
+	g := NewStrGenerator(charSet, defRandSource)
+	atomic.StorePointer(&defStrGen, unsafe.Pointer(&g))
+}
 
 // String returns a random string with the specified length.
 func String(n int) string {
-	return defStrGen.Generate(n)
+	return (*StrGenerator)(atomic.LoadPointer(&defStrGen)).Generate(n)
+}
+
+type LockRandSource struct {
+	s  rand.Source
+	mu sync.Mutex
+}
+
+func NewLockRandSource(seed int64) *LockRandSource {
+	return &LockRandSource{s: rand.NewSource(seed)}
+}
+
+func (r *LockRandSource) Int63() int64 {
+	r.mu.Lock()
+	n := r.s.Int63()
+	r.mu.Unlock()
+	return n
+}
+
+func (r *LockRandSource) Seed(seed int64) {
+	r.mu.Lock()
+	r.s.Seed(seed)
+	r.mu.Unlock()
 }
 
 // StrGenerator is a random string generator.
@@ -26,11 +60,10 @@ type StrGenerator struct {
 	charIdxMask int64  // mask, get the last charIdxBits bits of an integer
 	charIdxMax  int    // divide the random number into charIdxBits parts and use them respectively
 	randSource  rand.Source
-	mu          sync.Mutex
 }
 
 // NewStrGenerator returns a new StrGenerator.
-func NewStrGenerator(charSet string) *StrGenerator {
+func NewStrGenerator(charSet string, randSource rand.Source) StrGenerator {
 	r := []rune(charSet)
 
 	var bits int
@@ -38,12 +71,12 @@ func NewStrGenerator(charSet string) *StrGenerator {
 		l = l >> 1
 	}
 
-	return &StrGenerator{
+	return StrGenerator{
 		charSet:     r,
 		charIdxBits: bits,
 		charIdxMask: 1<<bits - 1,
 		charIdxMax:  63 / bits,
-		randSource:  rand.NewSource(time.Now().UnixNano()),
+		randSource:  randSource,
 	}
 }
 
@@ -51,9 +84,9 @@ func NewStrGenerator(charSet string) *StrGenerator {
 func (r *StrGenerator) Generate(n int) string {
 	var buf strings.Builder
 	buf.Grow(n)
-	for i, cache, remain := n-1, r.int63(), r.charIdxMax; i >= 0; {
+	for i, cache, remain := n-1, r.randSource.Int63(), r.charIdxMax; i >= 0; {
 		if remain == 0 {
-			cache, remain = r.int63(), r.charIdxMax
+			cache, remain = r.randSource.Int63(), r.charIdxMax
 		}
 		if idx := int(cache & r.charIdxMask); idx < len(r.charSet) {
 			buf.WriteRune(r.charSet[idx])
@@ -63,11 +96,4 @@ func (r *StrGenerator) Generate(n int) string {
 		remain--
 	}
 	return buf.String()
-}
-
-func (r *StrGenerator) int63() int64 {
-	r.mu.Lock()
-	n := r.randSource.Int63()
-	r.mu.Unlock()
-	return n
 }

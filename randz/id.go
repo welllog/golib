@@ -27,11 +27,16 @@ func init() {
 	}
 }
 
-var defIdGen = unsafe.Pointer(NewIdGenerator(time.Date(2023, 2, 27, 0, 30, 0, 0, time.UTC), 18))
+var defIdGen unsafe.Pointer
+
+func init() {
+	SetIdGeneratorStartTime(time.Date(2023, 2, 27, 0, 30, 0, 0, time.UTC))
+}
 
 // SetIdGeneratorStartTime set the start time of the default id generator
 func SetIdGeneratorStartTime(t time.Time) {
-	atomic.StorePointer(&defIdGen, unsafe.Pointer(NewIdGenerator(t, 18)))
+	g := NewIdGenerator(t, 18)
+	atomic.StorePointer(&defIdGen, unsafe.Pointer(&g))
 }
 
 // Id return a random id
@@ -49,7 +54,7 @@ type IdGenerator struct {
 }
 
 // NewIdGenerator | 1 bit Unused | 41bit timestamp | 2~22bit rand |
-func NewIdGenerator(startTime time.Time, randBit int) *IdGenerator {
+func NewIdGenerator(startTime time.Time, randBit int) IdGenerator {
 	if randBit <= 1 {
 		randBit = 16
 	}
@@ -57,7 +62,7 @@ func NewIdGenerator(startTime time.Time, randBit int) *IdGenerator {
 		randBit = 22
 	}
 
-	return &IdGenerator{
+	return IdGenerator{
 		randBit:   randBit,
 		randMax:   1 << randBit,
 		startTime: startTime,
