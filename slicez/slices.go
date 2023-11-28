@@ -127,6 +127,44 @@ func UniqueInPlace[T comparable](s []T) []T {
 	return s[:remain]
 }
 
+// UniqueFunc through fn compares slice s, puts unique elements into dst, and returns it.
+func UniqueFunc[T any, V comparable](dst, s []T, fn func(T) V) []T {
+	dst = dst[:0]
+	if len(s) == 0 {
+		return dst
+	}
+
+	seen := make(map[V]struct{}, len(s))
+	var uniqueCount int
+	for _, v := range s {
+		seen[fn(v)] = struct{}{}
+		if uniqueCount < len(seen) {
+			dst = append(dst, v)
+			uniqueCount = len(seen)
+		}
+	}
+	return dst
+}
+
+// UniqueFuncInPlace through fn compares slice s, moves unique elements to the front of s, and returns this portion of s.
+func UniqueFuncInPlace[T any, V comparable](s []T, fn func(T) V) []T {
+	if len(s) == 0 {
+		return s
+	}
+
+	seen := make(map[V]struct{}, len(s))
+	var remain, uniqueCount int
+	for i := range s {
+		seen[fn(s[i])] = struct{}{}
+		if uniqueCount < len(seen) {
+			s[remain], s[i] = s[i], s[remain]
+			uniqueCount = len(seen)
+			remain++
+		}
+	}
+	return s[:remain]
+}
+
 // Filter puts elements from s that satisfy predicate into dst, and returns it.
 func Filter[T any](dst, s []T, predicate func(T) bool) []T {
 	dst = dst[:0]
@@ -178,9 +216,24 @@ func Index[T comparable](s []T, v T) int {
 	return -1
 }
 
+// IndexFunc returns the first index i satisfying f(s[i]), or -1 if there is no such index.
+func IndexFunc[T any](s []T, fn func(T) bool) int {
+	for i := range s {
+		if fn(s[i]) {
+			return i
+		}
+	}
+	return -1
+}
+
 // Contains returns true if v is present in s.
 func Contains[T comparable](s []T, v T) bool {
 	return Index(s, v) >= 0
+}
+
+// ContainsFunc returns true if there is an element in s that satisfies f(s[i]).
+func ContainsFunc[T comparable](s []T, fn func(T) bool) bool {
+	return IndexFunc(s, fn) >= 0
 }
 
 // Chunk splits slice s into chunks of size chunkSize, and returns the result.

@@ -360,6 +360,91 @@ func TestUniqueInPlace(t *testing.T) {
 	}
 }
 
+func TestUniqueFunc(t *testing.T) {
+	type args struct {
+		s []int
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{
+			name: "Test case 1",
+			args: args{
+				s: []int{1, 2, 2, 3, 3, 3, 4, 4, 4, 4},
+			},
+			want: []int{1, 2, 3, 4},
+		},
+		{
+			name: "Test case 2",
+			args: args{
+				s: []int{1, 1, 1, 1},
+			},
+			want: []int{1},
+		},
+		{
+			name: "Test case 3",
+			args: args{
+				s: []int{},
+			},
+			want: []int{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var dst []int
+			if got := UniqueFunc(dst, tt.args.s, func(n int) int {
+				return 2 * n
+			}); !Equal(got, tt.want) {
+				t.Errorf("Unique() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUniqueFuncInPlace(t *testing.T) {
+	type args struct {
+		s []int
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{
+			name: "Test case 1",
+			args: args{
+				s: []int{1, 2, 2, 3, 3, 3, 4, 4, 4, 4},
+			},
+			want: []int{1, 2, 3, 4},
+		},
+		{
+			name: "Test case 2",
+			args: args{
+				s: []int{1, 1, 1, 1},
+			},
+			want: []int{1},
+		},
+		{
+			name: "Test case 3",
+			args: args{
+				s: []int{},
+			},
+			want: []int{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := UniqueFuncInPlace(tt.args.s, func(n int) int {
+				return 2 * n
+			}); !Equal(got, tt.want) {
+				t.Errorf("UniqueInPlace() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestFilter(t *testing.T) {
 	type args struct {
 		s         []int
@@ -549,6 +634,52 @@ func TestIndex(t *testing.T) {
 	}
 }
 
+func TestIndexFunc(t *testing.T) {
+	type args struct {
+		s []int
+		v int
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "Test case 1",
+			args: args{
+				s: []int{1, 2, 3},
+				v: 2,
+			},
+			want: 1,
+		},
+		{
+			name: "Test case 2",
+			args: args{
+				s: []int{1, 2, 3},
+				v: 4,
+			},
+			want: -1,
+		},
+		{
+			name: "Test case 3",
+			args: args{
+				s: []int{},
+				v: 1,
+			},
+			want: -1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IndexFunc(tt.args.s, func(n int) bool {
+				return n == tt.args.v
+			}); got != tt.want {
+				t.Errorf("Index() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestContains(t *testing.T) {
 	type args struct {
 		s []int
@@ -587,6 +718,52 @@ func TestContains(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := Contains(tt.args.s, tt.args.v); got != tt.want {
+				t.Errorf("Contains() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestContainsFunc(t *testing.T) {
+	type args struct {
+		s []int
+		v int
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Test case 1",
+			args: args{
+				s: []int{1, 2, 3},
+				v: 2,
+			},
+			want: true,
+		},
+		{
+			name: "Test case 2",
+			args: args{
+				s: []int{1, 2, 3},
+				v: 4,
+			},
+			want: false,
+		},
+		{
+			name: "Test case 3",
+			args: args{
+				s: []int{},
+				v: 1,
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ContainsFunc(tt.args.s, func(n int) bool {
+				return n == tt.args.v
+			}); got != tt.want {
 				t.Errorf("Contains() = %v, want %v", got, tt.want)
 			}
 		})
