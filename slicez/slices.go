@@ -127,17 +127,17 @@ func UniqueInPlace[T comparable](s []T) []T {
 	return s[:remain]
 }
 
-// UniqueFunc through fn compares slice s, puts unique elements into dst, and returns it.
-func UniqueFunc[T any, V comparable](dst, s []T, fn func(T) V) []T {
+// UniqueByKey through keyFn get the key of slice s, puts unique elements into dst, and returns it.
+func UniqueByKey[T any, K comparable](dst, s []T, keyFn func(T) K) []T {
 	dst = dst[:0]
 	if len(s) == 0 {
 		return dst
 	}
 
-	seen := make(map[V]struct{}, len(s))
+	seen := make(map[K]struct{}, len(s))
 	var uniqueCount int
 	for _, v := range s {
-		seen[fn(v)] = struct{}{}
+		seen[keyFn(v)] = struct{}{}
 		if uniqueCount < len(seen) {
 			dst = append(dst, v)
 			uniqueCount = len(seen)
@@ -146,16 +146,16 @@ func UniqueFunc[T any, V comparable](dst, s []T, fn func(T) V) []T {
 	return dst
 }
 
-// UniqueFuncInPlace through fn compares slice s, moves unique elements to the front of s, and returns this portion of s.
-func UniqueFuncInPlace[T any, V comparable](s []T, fn func(T) V) []T {
+// UniqueByKeyInPlace through keyFn get the key of slice s, moves unique elements to the front of s, and returns this portion of s.
+func UniqueByKeyInPlace[T any, K comparable](s []T, keyFn func(T) K) []T {
 	if len(s) == 0 {
 		return s
 	}
 
-	seen := make(map[V]struct{}, len(s))
+	seen := make(map[K]struct{}, len(s))
 	var remain, uniqueCount int
 	for i := range s {
-		seen[fn(s[i])] = struct{}{}
+		seen[keyFn(s[i])] = struct{}{}
 		if uniqueCount < len(seen) {
 			s[remain], s[i] = s[i], s[remain]
 			uniqueCount = len(seen)

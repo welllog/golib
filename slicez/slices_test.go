@@ -394,7 +394,7 @@ func TestUniqueFunc(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var dst []int
-			if got := UniqueFunc(dst, tt.args.s, func(n int) int {
+			if got := UniqueByKey(dst, tt.args.s, func(n int) int {
 				return 2 * n
 			}); !Equal(got, tt.want) {
 				t.Errorf("Unique() = %v, want %v", got, tt.want)
@@ -436,7 +436,7 @@ func TestUniqueFuncInPlace(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := UniqueFuncInPlace(tt.args.s, func(n int) int {
+			if got := UniqueByKeyInPlace(tt.args.s, func(n int) int {
 				return 2 * n
 			}); !Equal(got, tt.want) {
 				t.Errorf("UniqueInPlace() = %v, want %v", got, tt.want)
