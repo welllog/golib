@@ -14,6 +14,10 @@ func Equal(t *testing.T, expected, actual any, msgAndArgs ...any) {
 		return
 	}
 
+	if expected == nil || actual == nil {
+		requireLog(t, expected, actual, msgAndArgs)
+	}
+
 	e := reflect.TypeOf(expected)
 	a := reflect.TypeOf(actual)
 	if e.Kind() != a.Kind() {
