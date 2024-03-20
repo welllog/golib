@@ -128,6 +128,10 @@ func (r *Reader[T]) Reset(s T) {
 
 // Bytes returns a slice of the underlying string or byte slice.
 func (r *Reader[T]) Bytes() []byte {
+	if r.Len() == 0 {
+		return nil
+	}
+
 	if unsafe.Sizeof(r.s)/typez.WordBytes == 2 {
 		b := make([]byte, r.Len())
 		copy(b, r.s[r.i:])
