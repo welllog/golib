@@ -3,6 +3,7 @@ package strz
 import (
 	"errors"
 	"io"
+	"unsafe"
 
 	"github.com/welllog/golib/typez"
 )
@@ -127,5 +128,12 @@ func (r *Reader[T]) Reset(s T) {
 
 // Bytes returns a slice of the underlying string or byte slice.
 func (r *Reader[T]) Bytes() []byte {
-	return UnsafeStrOrBytesToBytes(r.s[r.i:])
+	if unsafe.Sizeof(r.s)/typez.WordBytes == 2 {
+		b := make([]byte, r.Len())
+		copy(b, r.s[r.i:])
+		return b
+	}
+
+	s := r.s[r.i:]
+	return *(*[]byte)(unsafe.Pointer(&s))
 }

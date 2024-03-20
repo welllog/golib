@@ -2,6 +2,7 @@ package strz
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -28,9 +29,12 @@ func UnsafeBytes(s string) []byte {
 // UnsafeStrOrBytesToBytes converts string or byte slice to byte slice. maybe safe risk
 func UnsafeStrOrBytesToBytes[T typez.StrOrBytes](s T) []byte {
 	if unsafe.Sizeof(s)/typez.WordBytes == 2 {
-		x := (*[2]uintptr)(unsafe.Pointer(&s))
-		h := [3]uintptr{x[0], x[1], x[1]}
-		return *(*[]byte)(unsafe.Pointer(&h))
+		var b []byte
+		hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+		hdr.Data = *(*uintptr)(unsafe.Pointer(&s))
+		hdr.Len = len(s)
+		hdr.Cap = len(s)
+		return b
 	}
 
 	return *(*[]byte)(unsafe.Pointer(&s))
