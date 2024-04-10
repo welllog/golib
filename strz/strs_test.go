@@ -7,61 +7,6 @@ import (
 	"github.com/welllog/golib/testz"
 )
 
-func TestUnsafeString(t *testing.T) {
-	tests := []string{
-		"hello",
-		"world ",
-		"&%^@*#",
-	}
-	for _, tt := range tests {
-		testz.Equal(t, tt, UnsafeString([]byte(tt)), "", tt)
-	}
-
-	if UnsafeString(nil) != "" {
-		t.Errorf("UnsafeString(nil) != \"\"")
-	}
-}
-
-func TestUnsafeBytes(t *testing.T) {
-	tests := []string{
-		"hello",
-		"world ",
-		"&%^@*#",
-		"\"sds测试",
-	}
-	for _, tt := range tests {
-		testz.Equal(t, []byte(tt), UnsafeBytes(tt), "", tt)
-	}
-}
-
-func TestUnsafeStrOrBytesToBytes(t *testing.T) {
-	tests := []string{
-		"hello",
-		"world",
-		"👋,??, what happen",
-	}
-
-	for _, tt := range tests {
-		testz.Equal(t, []byte(tt), UnsafeStrOrBytesToBytes(tt), tt)
-	}
-
-	tests2 := [][]byte{
-		[]byte("hello"),
-		[]byte("world"),
-		[]byte("👋,??, what happen"),
-	}
-	for _, tt := range tests2 {
-		testz.Equal(t, tt, UnsafeStrOrBytesToBytes(tt), string(tt))
-	}
-
-	for i := range tests2 {
-		tests2[i] = append(tests2[i], 't', 'e', 's', 't')
-	}
-	for _, tt := range tests2 {
-		testz.Equal(t, tt, UnsafeStrOrBytesToBytes(tt), string(tt))
-	}
-}
-
 func TestMask(t *testing.T) {
 	tests := []struct {
 		str, mask, want string

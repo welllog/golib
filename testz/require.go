@@ -43,19 +43,23 @@ func Nil(t *testing.T, actual any, msgAndArgs ...any) {
 
 func requireLog(t *testing.T, expected, actual any, msgAndArgs []any) {
 	t.Helper()
-	errLog(t, expected, actual, "expected: %v, actual: %v;", msgAndArgs)
+	errLog(t, "expected: <%T> %v, actual: <%T> %v;", []any{
+		expected, expected, actual, actual,
+	}, msgAndArgs)
 }
 
 func invalidOpLog(t *testing.T, expected, actual any, msgAndArgs []any) {
 	t.Helper()
-	errLog(t, expected, actual, "Invalid operation: %#v == %#v;", msgAndArgs)
+	errLog(t, "Invalid operation: %#v == %#v;", []any{
+		expected, actual,
+	}, msgAndArgs)
 }
 
-func errLog(t *testing.T, expected, actual any, opLog string, msgAndArgs []any) {
+func errLog(t *testing.T, opLog string, assertArgs, msgAndArgs []any) {
 	t.Helper()
 
-	args := make([]interface{}, 0, len(msgAndArgs)+2)
-	args = append(args, expected, actual)
+	args := make([]any, len(assertArgs), len(assertArgs)+len(msgAndArgs))
+	copy(args, assertArgs)
 
 	var format strings.Builder
 	format.WriteString(opLog)

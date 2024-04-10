@@ -8,7 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unsafe"
+
+	"github.com/welllog/golib/strz"
 )
 
 const _HIDDEN_KEY = "xx---.internal.request.payload.---xx"
@@ -40,7 +41,7 @@ func (b Body) CleanPayload() {
 // QueryString returns the query string
 func (b Body) QueryString(valueEncode func(string) string) string {
 	bs := b.QueryBytes(valueEncode)
-	return *(*string)(unsafe.Pointer(&bs))
+	return strz.UnsafeString(bs)
 }
 
 // QueryBytes returns the query bytes
@@ -78,7 +79,7 @@ func (b Body) QueryBytes(valueEncode func(string) string) []byte {
 func toStr(value any) string {
 	switch v := value.(type) {
 	case []byte:
-		return *(*string)(unsafe.Pointer(&v))
+		return strz.UnsafeString(v)
 	case string:
 		return v
 	case nil:
@@ -113,7 +114,7 @@ func toStr(value any) string {
 		return v.String()
 	default:
 		b, _ := json.Marshal(value)
-		return *(*string)(unsafe.Pointer(&b))
+		return strz.UnsafeString(b)
 	}
 }
 
