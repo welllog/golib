@@ -139,5 +139,5 @@ func (r *Reader[T]) Bytes() []byte {
 	}
 
 	s := r.s[r.i:]
-	return *(*[]byte)(unsafe.Pointer(&s))
+	return []byte(s)
 }
