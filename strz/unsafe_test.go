@@ -62,7 +62,7 @@ func TestUnsafeStrOrBytesToBytes(t *testing.T) {
 		[]byte("hello"),
 		[]byte("world"),
 		[]byte("👋,??, what happen"),
-		[]byte{},
+		{},
 		nil,
 	}
 	for _, tt := range tests2 {
@@ -108,7 +108,7 @@ func TestUnsafeStrOrBytesToString(t *testing.T) {
 		[]byte("hello"),
 		[]byte("world"),
 		[]byte("👋,??, what happen"),
-		[]byte{},
+		{},
 		nil,
 	}
 	for _, tt := range tests2 {

@@ -1,7 +1,6 @@
-package dsz
+package setz
 
 // Set[T comparable] is a set of T.
-// Deprecated: use setz.Set instead.
 type Set[T comparable] map[T]struct{}
 
 // Add adds v to s.
@@ -113,26 +112,46 @@ func (s Set[T]) IntersectWithSlice(other []T) {
 	}
 }
 
-// SetFromSlice fills dst with src
-// Deprecated: direct use MultiAdd of setz.Set instead.
-func SetFromSlice[T comparable](dst Set[T], src []T) {
+// AddMapKeysToSet adds all keys in m to s.
+func AddMapKeysToSet[T comparable, V any](s Set[T], m map[T]V) {
+	for k := range m {
+		s[k] = struct{}{}
+	}
+}
+
+// AddMapValuesToSet adds all values in m to s.
+func AddMapValuesToSet[T comparable, K comparable](s Set[T], m map[K]T) {
+	for _, v := range m {
+		s[v] = struct{}{}
+	}
+}
+
+// FromSlice returns a new set containing all values in src.
+func FromSlice[T comparable](src []T) Set[T] {
+	dst := make(Set[T], len(src))
 	for _, v := range src {
 		dst[v] = struct{}{}
 	}
+
+	return dst
 }
 
-// SetFromMapKeys fills dst with keys from src
-// Deprecated: use setz.AddMapKeysToSet instead.
-func SetFromMapKeys[T comparable, V any](dst Set[T], src map[T]V) {
+// FromMapKeys returns a new set containing all keys in src.
+func FromMapKeys[T comparable, V any](src map[T]V) Set[T] {
+	dst := make(Set[T], len(src))
 	for k := range src {
 		dst[k] = struct{}{}
 	}
+
+	return dst
 }
 
-// SetFromMapValues fills dst with values from src
-// Deprecated: use setz.AddMapValuesToSet instead.
-func SetFromMapValues[T comparable, K comparable](dst Set[T], m map[K]T) {
+// FromMapValues returns a new set containing all values in src.
+func FromMapValues[T comparable, K comparable](m map[K]T) Set[T] {
+	dst := make(Set[T], len(m))
 	for _, v := range m {
 		dst[v] = struct{}{}
 	}
+
+	return dst
 }
