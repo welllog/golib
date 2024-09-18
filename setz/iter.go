@@ -4,14 +4,16 @@ package setz
 
 import "iter"
 
-// IterValues returns an iterator that yields all values in the bit set.
-func (b *Bits) IterValues() iter.Seq[uint] {
-	bi := b.Iter()
-
+// All returns an iterator that yields all values in the bit set.
+func (b *Bits) All() iter.Seq[uint] {
 	return func(yield func(uint) bool) {
-		for bi.Next() {
-			if !yield(bi.Value()) {
-				break
+		for i := 0; i < len(b.set); i++ {
+			for j := 0; j < 64; j++ {
+				if b.set[i]&(1<<j) != 0 {
+					if !yield(uint(i<<6 + j)) {
+						return
+					}
+				}
 			}
 		}
 	}

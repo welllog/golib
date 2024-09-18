@@ -12,8 +12,8 @@ func (s Set[T]) Add(v T) (first bool) {
 	return true
 }
 
-// MultiAdd adds vs to s.
-func (s Set[T]) MultiAdd(vs ...T) {
+// AddAll adds all values in vs to the set.
+func (s Set[T]) AddAll(vs ...T) {
 	for _, v := range vs {
 		s[v] = struct{}{}
 	}
@@ -103,7 +103,7 @@ func (s Set[T]) DiffWithSlice(other []T) {
 // IntersectWithSlice deletes all values in s that are not in other.
 func (s Set[T]) IntersectWithSlice(other []T) {
 	tmp := make(Set[T], len(other))
-	tmp.MultiAdd(other...)
+	tmp.AddAll(other...)
 
 	for k := range s {
 		if _, ok := tmp[k]; !ok {

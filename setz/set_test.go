@@ -17,9 +17,9 @@ func TestSet_Add(t *testing.T) {
 	}
 }
 
-func TestSet_MultiAdd(t *testing.T) {
+func TestSet_AddAll(t *testing.T) {
 	s := make(Set[int])
-	s.MultiAdd(1, 2, 3)
+	s.AddAll(1, 2, 3)
 	if !s.Has(1) {
 		t.Fatal("add 1 failed")
 	}
@@ -36,7 +36,7 @@ func TestSet_MultiAdd(t *testing.T) {
 
 func TestSet_Delete(t *testing.T) {
 	s := make(Set[int])
-	s.MultiAdd(1, 2, 3)
+	s.AddAll(1, 2, 3)
 	if !s.Delete(1) {
 		t.Fatal("delete 1 failed")
 	}
@@ -56,7 +56,7 @@ func TestSet_Delete(t *testing.T) {
 
 func TestSet_Values(t *testing.T) {
 	s := make(Set[int])
-	s.MultiAdd(1, 2, 3)
+	s.AddAll(1, 2, 3)
 	var vs []int
 	vs = s.Values(vs)
 	if len(vs) != 3 {
@@ -66,9 +66,9 @@ func TestSet_Values(t *testing.T) {
 
 func TestSet_Diff(t *testing.T) {
 	s := make(Set[int])
-	s.MultiAdd(0, 1, 2, 3)
+	s.AddAll(0, 1, 2, 3)
 	s1 := make(Set[int])
-	s1.MultiAdd(1, 2, 3, 4)
+	s1.AddAll(1, 2, 3, 4)
 
 	s.Diff(s1)
 	if len(s) != 1 {
@@ -78,9 +78,9 @@ func TestSet_Diff(t *testing.T) {
 
 func TestSet_Intersect(t *testing.T) {
 	s := make(Set[int])
-	s.MultiAdd(0, 1, 2, 3)
+	s.AddAll(0, 1, 2, 3)
 	s1 := make(Set[int])
-	s1.MultiAdd(1, 2, 3, 4)
+	s1.AddAll(1, 2, 3, 4)
 
 	s.Intersect(s1)
 	if len(s) != 3 {
@@ -90,7 +90,7 @@ func TestSet_Intersect(t *testing.T) {
 
 func TestSet_DiffWithSlice(t *testing.T) {
 	s := make(Set[int])
-	s.MultiAdd(0, 1, 2, 3)
+	s.AddAll(0, 1, 2, 3)
 	s1 := []int{1, 2, 3, 4}
 
 	s.DiffWithSlice(s1)
@@ -101,7 +101,7 @@ func TestSet_DiffWithSlice(t *testing.T) {
 
 func TestSet_IntersectWithSlice(t *testing.T) {
 	s := make(Set[int])
-	s.MultiAdd(0, 1, 2, 3)
+	s.AddAll(0, 1, 2, 3)
 	s1 := []int{1, 2, 3, 4}
 
 	s.IntersectWithSlice(s1)
@@ -112,7 +112,7 @@ func TestSet_IntersectWithSlice(t *testing.T) {
 
 func TestSet_Filter(t *testing.T) {
 	s := make(Set[int])
-	s.MultiAdd(1, 2, 3)
+	s.AddAll(1, 2, 3)
 
 	s.Filter(func(v int) bool {
 		return v > 1
