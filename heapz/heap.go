@@ -16,11 +16,11 @@ type Heap[T any] struct {
 }
 
 // New returns a new heap with the given capacity and compare function.
-func New[T any](cap int, cmp func(T, T) bool) *Heap[T] {
+func New[T any](cap int, cmp func(T, T) bool) Heap[T] {
 	var h Heap[T]
 	values := make([]*Element[T], 0, cap)
 	h.init(values, cmp)
-	return &h
+	return h
 }
 
 // Init initializes a heap with the given elements and compare function.

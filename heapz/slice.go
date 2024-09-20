@@ -3,7 +3,6 @@ package heapz
 type Slice[T any] struct {
 	Values []T
 	cmp    func(T, T) bool
-	zero   T
 }
 
 // NewSlice returns a new heap with the given compare function.
@@ -27,14 +26,14 @@ func (s *Slice[T]) Push(x T) {
 
 // Pop removes and returns the minimum element (according to compare function) from the heap.
 func (s *Slice[T]) Pop() (T, bool) {
-	var x T
+	var x, zero T
 
 	n := len(s.Values)
 	if n == 0 {
 		return x, false
 	} else if n == 1 {
 		x = s.Values[0]
-		s.Values[0] = s.zero
+		s.Values[0] = zero
 		s.Values = s.Values[:0]
 		return x, true
 	}
@@ -43,7 +42,7 @@ func (s *Slice[T]) Pop() (T, bool) {
 	s.Values[0], s.Values[n] = s.Values[n], s.Values[0]
 	down(s.Values, s.cmp, swap[T], 0, n)
 	x = s.Values[n]
-	s.Values[n] = s.zero
+	s.Values[n] = zero
 	s.Values = s.Values[:n]
 	return x, true
 }
@@ -65,7 +64,7 @@ func (s *Slice[T]) Len() int {
 
 // Remove removes and returns the element at index i from the slice.
 func (s *Slice[T]) Remove(i int) (T, bool) {
-	var x T
+	var x, zero T
 	if i < 0 || i >= len(s.Values) {
 		return x, false
 	}
@@ -77,7 +76,7 @@ func (s *Slice[T]) Remove(i int) (T, bool) {
 	}
 
 	x = s.Values[n]
-	s.Values[n] = s.zero
+	s.Values[n] = zero
 	s.Values = s.Values[:n]
 	return x, true
 }
