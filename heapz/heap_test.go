@@ -239,6 +239,24 @@ func BenchmarkHeap_PushPop(b *testing.B) {
 		}
 	})
 
+	b.Run("std.GenericHeap", func(b *testing.B) {
+		n := 10000
+		h := make(myIntHeap, 0, n)
+
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for i := 0; i < b.N; i++ {
+			for j := 0; j < n; j++ {
+				Push[int](&h, j&1000)
+			}
+
+			for h.Len() > 0 {
+				Pop[int](&h)
+			}
+		}
+	})
+
 	b.Run("heapz.Heap", func(b *testing.B) {
 		n := 10000
 		h := New[int](n, intCmp)

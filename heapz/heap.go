@@ -35,11 +35,18 @@ func (h *Heap[T]) Init(s []T, cmp func(T, T) bool) {
 
 // Push pushes the element x onto the heap.
 func (h *Heap[T]) Push(x T) *Element[T] {
+	e := &Element[T]{Value: x}
+	h.PushElement(e)
+	return e
+}
+
+// PushElement pushes the element e onto the heap.
+func (h *Heap[T]) PushElement(e *Element[T]) {
 	index := len(h.values)
-	e := &Element[T]{Value: x, heap: h, index: index}
+	e.heap = h
+	e.index = index
 	h.values = append(h.values, e)
 	up(h.values, h.cmp, swapEle[T], index)
-	return e
 }
 
 // Pop removes and returns the minimum element (according to compare function) from the heap.

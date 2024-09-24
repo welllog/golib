@@ -2,9 +2,9 @@ package ringz
 
 type Slice[T any] struct {
 	values []T
-	head int
-	tail int
-	cap int
+	head   int
+	tail   int
+	cap    int
 }
 
 // NewSlice returns a new slice with the given capacity.
@@ -29,7 +29,7 @@ func (s *Slice[T]) IsEmpty() bool {
 
 // IsFull returns true if the slice is full.
 func (s *Slice[T]) IsFull() bool {
-	return (s.tail + 1) % s.cap == s.head
+	return (s.tail+1)%s.cap == s.head
 }
 
 // Push pushes the value to queue tail.
@@ -78,14 +78,14 @@ func (s *Slice[T]) Peek() (T, bool) {
 // Len returns the number of elements in the slice.
 func (s *Slice[T]) Len() int {
 	if s.IsEmpty() {
-        return 0
-    }
+		return 0
+	}
 
-    if s.head <= s.tail {
-        return s.tail - s.head + 1
-    }
+	if s.head <= s.tail {
+		return s.tail - s.head + 1
+	}
 
-    return s.cap - s.head + s.tail + 1
+	return s.cap - s.head + s.tail + 1
 }
 
 // Recap changes the capacity of the slice.
@@ -112,12 +112,12 @@ func (s *Slice[T]) Recap(cap int) bool {
 		copy(newValues, s.values[s.head:s.tail+1])
 	} else {
 		n := copy(newValues, s.values[s.head:])
-        copy(newValues[n:], s.values[:s.tail+1])
+		copy(newValues[n:], s.values[:s.tail+1])
 	}
 
 	s.head = 0
-    s.tail = l - 1
-    s.values = newValues
-    s.cap = cap
+	s.tail = l - 1
+	s.values = newValues
+	s.cap = cap
 	return true
 }

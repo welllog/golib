@@ -170,6 +170,34 @@ func (l *List[T]) InsertAfter(v T, mark *Element[T]) *Element[T] {
 	return l.insertValue(v, mark)
 }
 
+// PushFrontElement inserts a new element e at the front of list l.
+func (l *List[T]) PushFrontElement(e *Element[T]) {
+	l.lazyInit()
+	l.insert(e, &l.root)
+}
+
+// PushBackElement inserts a new element e at the back of list l.
+func (l *List[T]) PushBackElement(e *Element[T]) {
+	l.lazyInit()
+	l.insert(e, l.root.prev)
+}
+
+// InsertElementBefore inserts a new element e before mark and returns e.
+func (l *List[T]) InsertElementBefore(e, mark *Element[T]) {
+	if mark.list != l {
+		return
+	}
+	l.insert(e, mark.prev)
+}
+
+// InsertElementAfter inserts a new element e after mark and returns e.
+func (l *List[T]) InsertElementAfter(e, mark *Element[T]) {
+	if mark.list != l {
+		return
+	}
+	l.insert(e, mark)
+}
+
 // MoveToFront moves element e to the front of list l.
 // If e is not an element of l, the list is not modified.
 // The element must not be nil.
