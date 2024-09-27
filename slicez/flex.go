@@ -47,20 +47,12 @@ func (f *FlexSlice[T]) Get(index int) (T, bool) {
 // Remove removes the element at the given index.
 // This operation is O(n) because it shifts all elements to the left.
 func (f *FlexSlice[T]) Remove(index int) (T, bool) {
-	var v, zero T
-
-	if !f.withinRange(index) {
-		return zero, false
+	values, v, ok := Remove(f.Values, index)
+	if !ok {
+		return v, false
 	}
 
-	l := len(f.Values) - 1
-	v = f.Values[index]
-	if index < l {
-		copy(f.Values[index:], f.Values[index+1:])
-	}
-	f.Values[l] = zero
-	f.Values = f.Values[:l]
-
+	f.Values = values
 	f.shrink()
 
 	return v, true

@@ -342,3 +342,19 @@ func Values[T, V any](fn func(T) V, ss ...[]T) []V {
 	}
 	return ret
 }
+
+// Remove removes the element at the given index from s.
+func Remove[T any](s []T, index int) ([]T, T, bool) {
+	var zero T
+	if index < 0 || index >= len(s) {
+		return s, zero, false
+	}
+
+	last := len(s) - 1
+	v := s[index]
+	if index < last {
+		copy(s[index:], s[index+1:])
+	}
+	s[last] = zero
+	return s[:last], v, true
+}
