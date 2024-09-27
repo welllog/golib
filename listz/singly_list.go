@@ -33,6 +33,19 @@ func (l *SList[T]) Back() *SNode[T] {
 	return l.tail
 }
 
+// Get returns the node at index i.
+func (l *SList[T]) Get(i int) *SNode[T] {
+	if !l.withinRange(i) {
+		return nil
+	}
+
+	e := l.head
+	for index := 0; index < i; index++ {
+		e = e.next
+	}
+	return e
+}
+
 // Remove removes the node at index i from the list.
 // This operation is O(n) where n is the len of the list.
 func (l *SList[T]) Remove(i int) *SNode[T] {
@@ -131,15 +144,30 @@ func (l *SList[T]) InsertNodeAt(i int, e *SNode[T]) {
 		return
 	}
 
-	i--
 	before := l.head
-	for index := 0; index < i; index++ {
+	for index := 0; index < i-1; index++ {
 		before = before.next
 	}
 
 	e.next = before.next
 	before.next = e
 	l.len++
+}
+
+// Swap swaps the values of two nodes at indexes i and j.
+func (l *SList[T]) Swap(i, j int) {
+	if l.withinRange(i) && l.withinRange(j) && i != j {
+		var e1, e2 *SNode[T]
+		for index, ce := 0, l.head; e1 == nil || e2 == nil; index, ce = index+1, ce.next {
+			switch index {
+			case i:
+				e1 = ce
+			case j:
+				e2 = ce
+			}
+		}
+		e1.Value, e2.Value = e2.Value, e1.Value
+	}
 }
 
 func (l *SList[T]) withinRange(index int) bool {
