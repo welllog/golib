@@ -8,7 +8,6 @@
 ###
 * ``cryptz`` 加解密相关函数
 * ``ctxz`` ctx相关函数
-* ``dsz`` 数据和结构相关类型、函数
 * ``goz`` goroutine相关函数
 * ``hashz`` hash相关函数
 * ``heapz`` 堆相关实现

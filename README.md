@@ -8,7 +8,6 @@ a tool library based on Go standard library, designed for performance, flexibili
 ###
 * ``cryptz`` encryption and decryption related functions
 * ``ctxz`` ctx related functions
-* ``dsz`` data and structures related types and functions
 * ``goz`` goroutine related functions
 * ``hashz`` hash related functions
 * ``heapz`` heap related implementations

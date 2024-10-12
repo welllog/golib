@@ -3,19 +3,19 @@ package ringz
 import "testing"
 
 func TestIsEmpty(t *testing.T) {
-	// Test when the slice is newly created
-	s := NewSlice[int](3)
+	// Test when the ring is newly created
+	s := New[int](3)
 	if !s.IsEmpty() {
 		t.Errorf("expected IsEmpty to be true, got false")
 	}
 
-	// Test when the slice has one element
+	// Test when the ring has one element
 	s.Push(1)
 	if s.IsEmpty() {
 		t.Errorf("expected IsEmpty to be false, got true")
 	}
 
-	// Test when the slice has multiple elements
+	// Test when the ring has multiple elements
 	s.Push(2)
 	s.Push(3)
 	if s.IsEmpty() {
@@ -45,32 +45,32 @@ func TestIsEmpty(t *testing.T) {
 }
 
 func TestIsFull(t *testing.T) {
-	// Test when the slice is empty
-	s := NewSlice[int](3)
+	// Test when the ring is empty
+	s := New[int](3)
 	if s.IsFull() {
 		t.Errorf("expected IsFull to be false, got true")
 	}
 
-	// Test when the slice is partially filled
+	// Test when the ring is partially filled
 	s.Push(1)
 	if s.IsFull() {
 		t.Errorf("expected IsFull to be false, got true")
 	}
 
-	// Test when the slice is full
+	// Test when the ring is full
 	s.Push(2)
 	s.Push(3)
 	if !s.IsFull() {
 		t.Errorf("expected IsFull to be true, got false")
 	}
 
-	// Test after popping an element from a full slice
+	// Test after popping an element from a full ring
 	s.Pop()
 	if s.IsFull() {
 		t.Errorf("expected IsFull to be false, got true")
 	}
 
-	// Test after pushing an element to a nearly full slice
+	// Test after pushing an element to a nearly full ring
 	s.Push(4)
 	if !s.IsFull() {
 		t.Errorf("expected IsFull to be true, got false")
@@ -84,9 +84,9 @@ func TestIsFull(t *testing.T) {
 	}
 }
 
-func TestSlicePop(t *testing.T) {
-	// Test Pop on an empty slice
-	s := NewSlice[int](5)
+func TestRingPop(t *testing.T) {
+	// Test Pop on an empty ring
+	s := New[int](5)
 	val, ok := s.Pop()
 	if ok {
 		t.Errorf("expected false, got true")
@@ -95,7 +95,7 @@ func TestSlicePop(t *testing.T) {
 		t.Errorf("expected 0, got %d", val)
 	}
 
-	// Test Pop on a slice with one element
+	// Test Pop on a ring with one element
 	s.Push(1)
 	val, ok = s.Pop()
 	if !ok {
@@ -105,10 +105,10 @@ func TestSlicePop(t *testing.T) {
 		t.Errorf("expected 1, got %d", val)
 	}
 	if !s.IsEmpty() {
-		t.Errorf("expected slice to be empty")
+		t.Errorf("expected ring to be empty")
 	}
 
-	// Test Pop on a slice with multiple elements
+	// Test Pop on a ring with multiple elements
 	s.Push(1)
 	s.Push(2)
 	s.Push(3)
@@ -142,11 +142,11 @@ func TestSlicePop(t *testing.T) {
 		t.Errorf("expected 3, got %d", val)
 	}
 	if !s.IsEmpty() {
-		t.Errorf("expected slice to be empty")
+		t.Errorf("expected ring to be empty")
 	}
 
-	// Test Pop on a wrapped-around slice
-	s = NewSlice[int](3)
+	// Test Pop on a wrapped-around ring
+	s = New[int](3)
 	s.Push(1)
 	s.Push(2)
 	s.Push(3)
@@ -174,24 +174,24 @@ func TestSlicePop(t *testing.T) {
 		t.Errorf("expected 4, got %d", val)
 	}
 	if !s.IsEmpty() {
-		t.Errorf("expected slice to be empty")
+		t.Errorf("expected ring to be empty")
 	}
 }
 
-func TestSliceLen(t *testing.T) {
-	// Test Len on an empty slice
-	s := NewSlice[int](5)
+func TestRingLen(t *testing.T) {
+	// Test Len on an empty ring
+	s := New[int](5)
 	if s.Len() != 0 {
 		t.Errorf("expected length 0, got %d", s.Len())
 	}
 
-	// Test Len on a slice with one element
+	// Test Len on a ring with one element
 	s.Push(1)
 	if s.Len() != 1 {
 		t.Errorf("expected length 1, got %d", s.Len())
 	}
 
-	// Test Len on a slice with multiple elements
+	// Test Len on a ring with multiple elements
 	s.Push(2)
 	s.Push(3)
 	if s.Len() != 3 {
@@ -209,7 +209,7 @@ func TestSliceLen(t *testing.T) {
 	}
 
 	// Test Len with wrap-around condition
-	s = NewSlice[int](3)
+	s = New[int](3)
 	s.Push(1)
 	s.Push(2)
 	s.Push(3)
@@ -229,9 +229,9 @@ func TestSliceLen(t *testing.T) {
 	}
 }
 
-func TestSliceRecap(t *testing.T) {
+func TestRingRecap(t *testing.T) {
 	// Test Recap to a larger size
-	s := NewSlice[int](3)
+	s := New[int](3)
 	s.Push(1)
 	s.Push(2)
 	s.Push(3)
@@ -255,8 +255,8 @@ func TestSliceRecap(t *testing.T) {
 		t.Errorf("expected size 5, got %d", s.cap)
 	}
 
-	// Test Recap on an empty slice
-	s = NewSlice[int](3)
+	// Test Recap on an empty ring
+	s = New[int](3)
 	s.Recap(5)
 	if s.Len() != 0 {
 		t.Errorf("expected length 0, got %d", s.Len())
@@ -269,7 +269,7 @@ func TestSliceRecap(t *testing.T) {
 	}
 
 	// Test Recap with wrap-around condition
-	s = NewSlice[int](3)
+	s = New[int](3)
 	s.Push(1)
 	s.Push(2)
 	s.Push(3)
