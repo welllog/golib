@@ -1,6 +1,8 @@
 package ringz
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestIsEmpty(t *testing.T) {
 	// Test when the ring is newly created
@@ -59,6 +61,10 @@ func TestIsFull(t *testing.T) {
 
 	// Test when the ring is full
 	s.Push(2)
+	if s.IsFull() {
+		t.Errorf("expected IsFull to be false, got true")
+	}
+
 	s.Push(3)
 	if !s.IsFull() {
 		t.Errorf("expected IsFull to be true, got false")
@@ -179,53 +185,9 @@ func TestRingPop(t *testing.T) {
 }
 
 func TestRingLen(t *testing.T) {
-	// Test Len on an empty ring
-	s := New[int](5)
-	if s.Len() != 0 {
-		t.Errorf("expected length 0, got %d", s.Len())
-	}
-
-	// Test Len on a ring with one element
-	s.Push(1)
-	if s.Len() != 1 {
-		t.Errorf("expected length 1, got %d", s.Len())
-	}
-
-	// Test Len on a ring with multiple elements
-	s.Push(2)
-	s.Push(3)
-	if s.Len() != 3 {
-		t.Errorf("expected length 3, got %d", s.Len())
-	}
-
-	// Test Len after popping elements
-	s.Pop()
-	if s.Len() != 2 {
-		t.Errorf("expected length 2, got %d", s.Len())
-	}
-	s.Pop()
-	if s.Len() != 1 {
-		t.Errorf("expected length 1, got %d", s.Len())
-	}
-
-	// Test Len with wrap-around condition
-	s = New[int](3)
-	s.Push(1)
-	s.Push(2)
-	s.Push(3)
-	s.Pop()
-	s.Push(4)
-	if s.Len() != 3 {
-		t.Errorf("expected length 3, got %d", s.Len())
-	}
-	s.Pop()
-	s.Pop()
-	if s.Len() != 1 {
-		t.Errorf("expected length 1, got %d", s.Len())
-	}
-	s.Pop()
-	if s.Len() != 0 {
-		t.Errorf("expected length 0, got %d", s.Len())
+	for c := 1; c <= 100; c++ {
+		r := New[int](c)
+		testRing(&r, c, t)
 	}
 }
 
@@ -290,5 +252,83 @@ func TestRingRecap(t *testing.T) {
 		if s.values[i] != v {
 			t.Errorf("expected value %d at index %d, got %d", v, i, s.values[i])
 		}
+	}
+}
+
+type ringI interface {
+	IsEmpty() bool
+	IsFull() bool
+	Len() int
+	Push(int) bool
+	Pop() (int, bool)
+}
+
+func testRing(r ringI, cap int, t *testing.T) {
+	t.Helper()
+	if r.Len() != 0 {
+		t.Errorf("expected length 0, got %d", r.Len())
+	}
+	if !r.IsEmpty() {
+		t.Errorf("expected IsEmpty to be true, got false")
+	}
+	if r.IsFull() {
+		t.Errorf("expected IsFull to be false, got true")
+	}
+
+	for i := 1; i <= cap; i++ {
+		if !r.Push(i) {
+			t.Errorf("expected Push to return true, got false")
+		}
+		if r.Len() != i {
+			t.Errorf("expected length %d, got %d", i, r.Len())
+		}
+		if r.IsEmpty() {
+			t.Errorf("expected IsEmpty to be false, got true")
+		}
+		if i == cap {
+			if !r.IsFull() {
+				t.Errorf("expected IsFull to be true, got false")
+			}
+		} else {
+			if r.IsFull() {
+				t.Errorf("expected IsFull to be false, got true")
+			}
+		}
+	}
+
+	if r.Push(cap + 1) {
+		t.Errorf("expected Push to return false, got true")
+	}
+	if r.Len() != cap {
+		t.Errorf("expected length %d, got %d", cap, r.Len())
+	}
+
+	for i := cap; i > 0; i-- {
+		n, ok := r.Pop()
+		if !ok && n != i {
+			t.Errorf("expected Pop to return true and %d, got %d and %v", i, n, ok)
+		}
+		if r.Len() != i-1 {
+			t.Errorf("expected length %d, got %d", i-1, r.Len())
+		}
+		if r.IsFull() {
+			t.Errorf("expected IsFull to be false, got true")
+		}
+		if i == 1 {
+			if !r.IsEmpty() {
+				t.Errorf("expected IsEmpty to be true, got false")
+			}
+		} else {
+			if r.IsEmpty() {
+				t.Errorf("expected IsEmpty to be false, got true")
+			}
+		}
+	}
+
+	if _, ok := r.Pop(); ok {
+		t.Errorf("expected Pop to return false, got true")
+	}
+	if r.Len() != 0 {
+		t.Errorf("expected length 0, got %d", r.Len())
 	}
 }

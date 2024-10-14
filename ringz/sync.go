@@ -1,15 +1,11 @@
 package ringz
 
 import (
+	"runtime"
+	"strconv"
 	"sync/atomic"
 	"time"
-	"unsafe"
-
-	"github.com/welllog/golib/mathz"
 )
-
-// cache line usually is 64 bytes, but Apple Silicon, a.k.a. M1, has 128-byte cache line size.
-const cacheLinePadSize = unsafe.Sizeof(uint64(0)) * 16
 
 type item[T any] struct {
 	value T
@@ -20,11 +16,8 @@ type SyncRing[T any] struct {
 	values []item[T]
 	cap    uint32
 	mask   uint32
-	// _      [cacheLinePadSize - unsafe.Sizeof(uint64(0))*3 - 8]byte
-	head uint32
-	// _      [cacheLinePadSize - 4]byte
-	tail uint32
-	// _      [cacheLinePadSize - 4]byte
+	head   uint32
+	tail   uint32
 }
 
 func NewSync[T any](cap int) SyncRing[T] {
@@ -34,9 +27,17 @@ func NewSync[T any](cap int) SyncRing[T] {
 }
 
 func (r *SyncRing[T]) Init(cap int) {
-	c := uint32(cap)
-	if c&(c-1) > 0 {
-		c = roundupPowOfTwo(c)
+	var c uint32
+	switch {
+	case cap <= 0:
+		panic("ringz.SyncRing Init: invalid capacity: " + strconv.Itoa(cap))
+	case 1 == cap:
+		c = 2
+	default:
+		c = uint32(cap)
+		if c&(c-1) > 0 {
+			c = roundupPowOfTwo(c)
+		}
 	}
 
 	r.cap = c
@@ -60,7 +61,17 @@ func (r *SyncRing[T]) IsFull() bool {
 
 // Len returns the length of the ring.
 func (r *SyncRing[T]) Len() int {
-	return mathz.Max(int(atomic.LoadUint32(&r.tail)-atomic.LoadUint32(&r.head)), 0)
+	l := atomic.LoadUint32(&r.tail) - atomic.LoadUint32(&r.head)
+	if l > r.cap {
+		return int(r.cap)
+	}
+
+	return int(l)
+}
+
+// Cap returns the capacity of the ring.
+func (r *SyncRing[T]) Cap() int {
+	return int(r.cap)
 }
 
 // Push pushes the value to queue tail.
@@ -79,7 +90,8 @@ func (r *SyncRing[T]) Push(value T) bool {
 	}
 
 	holder.value = value
-	atomic.AddUint32(&holder.pos, 1)
+	// atomic.AddUint32(&holder.pos, 1)
+	atomic.StoreUint32(&holder.pos, seq+1)
 	return true
 }
 
@@ -101,33 +113,30 @@ func (r *SyncRing[T]) Pop() (T, bool) {
 
 	value := holder.value
 	holder.value = zero
-	atomic.AddUint32(&holder.pos, r.mask)
+	// atomic.AddUint32(&holder.pos, r.mask)
+	atomic.StoreUint32(&holder.pos, seq+r.mask)
 	return value, true
 }
 
-// Peek returns the value from queue head without removing it.
-// Notice if return false, means the queue is empty or concurrent Pop operation.
-func (r *SyncRing[T]) Peek() (T, bool) {
-	pos := atomic.LoadUint32(&r.head)
-	holder := &r.values[pos&r.mask]
-	seq := atomic.LoadUint32(&holder.pos)
+// PushWait pushes the value to queue tail with max wait duration.
+// If maxWait is negative, it will block until the value is pushed.
+func (r *SyncRing[T]) PushWait(value T, maxWait time.Duration) bool {
+	if maxWait < 0 {
+		for {
+			if r.Push(value) {
+				return true
+			}
 
-	var zero T
-	if pos+1 != seq {
-		return zero, false
+			runtime.Gosched()
+		}
 	}
 
-	return holder.value, true
-}
-
-// PushWait pushes the value to queue tail with max wait duration.
-func (r *SyncRing[T]) PushWait(value T, maxWait time.Duration) bool {
 	if r.Push(value) {
 		return true
 	}
 
 	if maxWait == 0 {
-		maxWait = 500 * time.Millisecond
+		return false
 	}
 
 	ticker := time.NewTicker(10 * time.Millisecond)
@@ -149,29 +158,40 @@ func (r *SyncRing[T]) PushWait(value T, maxWait time.Duration) bool {
 }
 
 // PopWait removes and returns the value from queue head with max wait duration.
+// If maxWait is negative, it will block until the value is popped.
 func (r *SyncRing[T]) PopWait(maxWait time.Duration) (T, bool) {
+	if maxWait < 0 {
+		for {
+			if v, ok := r.Pop(); ok {
+				return v, true
+			}
+
+			runtime.Gosched()
+		}
+	}
+
 	if v, ok := r.Pop(); ok {
 		return v, true
 	}
 
+	var zero T
 	if maxWait == 0 {
-		maxWait = 500 * time.Millisecond
+		return zero, false
 	}
 
 	ticker := time.NewTicker(10 * time.Millisecond)
 	begin := time.Now()
 
 	for {
+		now := <-ticker.C
+
 		if v, ok := r.Pop(); ok {
 			ticker.Stop()
 			return v, true
 		}
 
-		now := <-ticker.C
-
 		if now.Sub(begin) >= maxWait {
 			ticker.Stop()
-			var zero T
 			return zero, false
 		}
 	}

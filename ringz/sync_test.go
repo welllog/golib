@@ -3,66 +3,14 @@ package ringz
 import (
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func TestSyncRing_Len(t *testing.T) {
-	q := NewSync[int](8)
-
-	// Test empty queue
-	if q.Len() != 0 {
-		t.Errorf("Expected quantity to be 0, but got %d", q.Len())
-	}
-
-	// Test single element
-	q.Push(1)
-	if q.Len() != 1 {
-		t.Errorf("Expected quantity to be 1, but got %d", q.Len())
-	}
-
-	// Test multiple elements
-	q.Push(2)
-	q.Push(3)
-	if q.Len() != 3 {
-		t.Errorf("Expected quantity to be 3, but got %d", q.Len())
-	}
-
-	// Test concurrent access
-	var wg sync.WaitGroup
-	var expected = 1000
-	for i := 0; i < expected; i++ {
-		wg.Add(1)
-		go func(n int) {
-			q.Push(n)
-			wg.Done()
-		}(i)
-	}
-	wg.Wait()
-	if q.Len() != 8 {
-		t.Errorf("Expected quantity to be %d, but got %d", 8, q.Len())
-	}
-
-	// Test concurrent access with removal
-	var removed uint32
-	for i := 0; i < expected; i++ {
-		wg.Add(1)
-		go func() {
-			_, ok := q.Pop()
-			if ok {
-				atomic.AddUint32(&removed, 1)
-			}
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-	if q.Len() != 0 {
-		t.Errorf("Expected quantity to be 0, but got %d", q.Len())
-	}
-
-	if removed != 8 {
-		t.Errorf("Expected removed to be %d, but got %d", 8, removed)
+	for c := 1; c <= 100; c++ {
+		r := NewSync[int](c)
+		testRing(&r, r.Cap(), t)
 	}
 }
 
@@ -200,7 +148,7 @@ func TestSyncRing_PushAndPop(t *testing.T) {
 	for i := 0; i < maxNum; i++ {
 		go func() {
 			for {
-				v, ok := q.PopWait(time.Hour)
+				v, ok := q.Pop()
 				if ok {
 					s[v] = 1
 					break
@@ -326,21 +274,8 @@ func BenchmarkSyncRing(b *testing.B) {
 
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				for {
-					if q.Push(1) {
-						break
-					} else {
-						runtime.Gosched()
-					}
-				}
-
-				for {
-					if _, ok := q.Pop(); ok {
-						break
-					} else {
-						runtime.Gosched()
-					}
-				}
+				q.PushWait(1, -1)
+				q.PopWait(-1)
 			}
 		})
 	})

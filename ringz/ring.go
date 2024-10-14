@@ -1,5 +1,7 @@
 package ringz
 
+import "strconv"
+
 type Ring[T any] struct {
 	values []T
 	head   int
@@ -16,6 +18,10 @@ func New[T any](cap int) Ring[T] {
 
 // Init initializes or clears the ring.
 func (r *Ring[T]) Init(cap int) {
+	if cap <= 0 {
+		panic("ringz.Ring Init: invalid capacity: " + strconv.Itoa(cap))
+	}
+
 	r.values = make([]T, cap)
 	r.head = -1
 	r.tail = -1
@@ -86,6 +92,11 @@ func (r *Ring[T]) Len() int {
 	}
 
 	return r.cap - r.head + r.tail + 1
+}
+
+// Cap returns the capacity of the ring.
+func (r *Ring[T]) Cap() int {
+	return r.cap
 }
 
 // Recap changes the capacity of the ring.
