@@ -47,8 +47,8 @@ func (l *DList[T]) Init() *DList[T] {
 	return l
 }
 
-// New returns an initialized list.
-func New[T any]() *DList[T] { return new(DList[T]).Init() }
+// NewDoubly returns an initialized list.
+func NewDoubly[T any]() *DList[T] { return new(DList[T]).Init() }
 
 // Len returns the number of nodes of list l.
 // The complexity is O(1).

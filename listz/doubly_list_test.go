@@ -57,7 +57,7 @@ func checkDListPointers[T any](t *testing.T, l *DList[T], es []*DNode[T]) {
 }
 
 func TestDList(t *testing.T) {
-	l := New[any]()
+	l := NewDoubly[any]()
 	checkDListPointers(t, l, []*DNode[any]{})
 
 	// Single node list
@@ -153,8 +153,8 @@ func checkDList[T int](t *testing.T, l *DList[T], es []T) {
 }
 
 func TestExtending(t *testing.T) {
-	l1 := New[int]()
-	l2 := New[int]()
+	l1 := NewDoubly[int]()
+	l2 := NewDoubly[int]()
 
 	l1.PushBack(1)
 	l1.PushBack(2)
@@ -163,13 +163,13 @@ func TestExtending(t *testing.T) {
 	l2.PushBack(4)
 	l2.PushBack(5)
 
-	l3 := New[int]()
+	l3 := NewDoubly[int]()
 	l3.PushBackDList(l1)
 	checkDList(t, l3, []int{1, 2, 3})
 	l3.PushBackDList(l2)
 	checkDList(t, l3, []int{1, 2, 3, 4, 5})
 
-	l3 = New[int]()
+	l3 = NewDoubly[int]()
 	l3.PushFrontDList(l2)
 	checkDList(t, l3, []int{4, 5})
 	l3.PushFrontDList(l1)
@@ -178,19 +178,19 @@ func TestExtending(t *testing.T) {
 	checkDList(t, l1, []int{1, 2, 3})
 	checkDList(t, l2, []int{4, 5})
 
-	l3 = New[int]()
+	l3 = NewDoubly[int]()
 	l3.PushBackDList(l1)
 	checkDList(t, l3, []int{1, 2, 3})
 	l3.PushBackDList(l3)
 	checkDList(t, l3, []int{1, 2, 3, 1, 2, 3})
 
-	l3 = New[int]()
+	l3 = NewDoubly[int]()
 	l3.PushFrontDList(l1)
 	checkDList(t, l3, []int{1, 2, 3})
 	l3.PushFrontDList(l3)
 	checkDList(t, l3, []int{1, 2, 3, 1, 2, 3})
 
-	l3 = New[int]()
+	l3 = NewDoubly[int]()
 	l1.PushBackDList(l3)
 	checkDList(t, l1, []int{1, 2, 3})
 	l1.PushFrontDList(l3)
@@ -198,7 +198,7 @@ func TestExtending(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	l := New[int]()
+	l := NewDoubly[int]()
 	e1 := l.PushBack(1)
 	e2 := l.PushBack(2)
 	checkDListPointers(t, l, []*DNode[int]{e1, e2})
@@ -210,11 +210,11 @@ func TestRemove(t *testing.T) {
 }
 
 func TestIssue4103(t *testing.T) {
-	l1 := New[int]()
+	l1 := NewDoubly[int]()
 	l1.PushBack(1)
 	l1.PushBack(2)
 
-	l2 := New[int]()
+	l2 := NewDoubly[int]()
 	l2.PushBack(3)
 	l2.PushBack(4)
 
@@ -231,7 +231,7 @@ func TestIssue4103(t *testing.T) {
 }
 
 func TestIssue6349(t *testing.T) {
-	l := New[int]()
+	l := NewDoubly[int]()
 	l.PushBack(1)
 	l.PushBack(2)
 
@@ -249,7 +249,7 @@ func TestIssue6349(t *testing.T) {
 }
 
 func TestMove(t *testing.T) {
-	l := New[int]()
+	l := NewDoubly[int]()
 	e1 := l.PushBack(1)
 	e2 := l.PushBack(2)
 	e3 := l.PushBack(3)

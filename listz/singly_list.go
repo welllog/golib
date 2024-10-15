@@ -18,6 +18,11 @@ type SList[T any] struct {
 	len  int
 }
 
+// NewSingly returns an initialized singly linked list.
+func NewSingly[T any]() *SList[T] {
+	return new(SList[T])
+}
+
 // Len returns the number of nodes of list l.
 func (l *SList[T]) Len() int {
 	return l.len
