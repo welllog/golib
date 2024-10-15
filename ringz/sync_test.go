@@ -3,6 +3,7 @@ package ringz
 import (
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -126,7 +127,7 @@ func TestSyncRing_IsEmpty(t *testing.T) {
 func TestSyncRing_PushAndPop(t *testing.T) {
 	maxNum := 4000
 	q := NewSync[int](100)
-	s := make([]uint8, maxNum)
+	s := make([]uint32, maxNum)
 
 	var wg sync.WaitGroup
 	wg.Add(maxNum * 2)
@@ -150,7 +151,7 @@ func TestSyncRing_PushAndPop(t *testing.T) {
 			for {
 				v, ok := q.Pop()
 				if ok {
-					s[v] = 1
+					atomic.AddUint32(&s[v], 1)
 					break
 				} else {
 					runtime.Gosched()
@@ -176,7 +177,7 @@ func TestSyncRing_PushAndPop(t *testing.T) {
 	}
 
 	for i := 0; i < maxNum; i++ {
-		if s[i] == 0 {
+		if s[i] != 1 {
 			t.Fatalf("Expected value %d to be in the queue, but it is not", i)
 		}
 	}
@@ -185,7 +186,7 @@ func TestSyncRing_PushAndPop(t *testing.T) {
 func TestSyncRing_PushWaitAndPopWait(t *testing.T) {
 	maxNum := 4000
 	q := NewSync[int](100)
-	s := make([]uint8, maxNum)
+	s := make([]uint32, maxNum)
 
 	var wg sync.WaitGroup
 	wg.Add(maxNum * 2)
@@ -202,7 +203,7 @@ func TestSyncRing_PushWaitAndPopWait(t *testing.T) {
 		go func() {
 			v, ok := q.PopWait(time.Hour)
 			if ok {
-				s[v] = 1
+				atomic.AddUint32(&s[v], 1)
 			}
 			wg.Done()
 		}()
@@ -224,8 +225,70 @@ func TestSyncRing_PushWaitAndPopWait(t *testing.T) {
 	}
 
 	for i := 0; i < maxNum; i++ {
-		if s[i] == 0 {
+		if s[i] != 1 {
 			t.Fatalf("Expected value %d to be in the queue, but it is not", i)
+		}
+	}
+}
+
+func TestSyncRing_PopWait(t *testing.T) {
+	c := runtime.GOMAXPROCS(0)
+
+	r := NewSync[int](c * 1000)
+	s := make([]uint32, c*1000)
+
+	var w sync.WaitGroup
+	w.Add(2 * c)
+	for i := 0; i < c; i++ {
+		go func(n int) {
+			for i := n * 1000; i < (n+1)*1000; i++ {
+				r.PushWait(i, -1)
+			}
+			w.Done()
+		}(i)
+	}
+
+	for i := 0; i < c; i++ {
+		go func() {
+			var count int
+			for {
+				n, _ := r.PopWait(-1)
+				atomic.AddUint32(&s[n], 1)
+
+				count++
+				if count == 500 {
+					break
+				}
+			}
+			w.Done()
+		}()
+	}
+
+	w.Wait()
+
+	if r.Len() != 500*c {
+		t.Errorf("expected length %d, got %d", 500*c, r.Len())
+	}
+
+	w.Add(c)
+	for i := 0; i < c; i++ {
+		go func() {
+			for {
+				n, ok := r.PopWait(3 * time.Second)
+				if !ok {
+					break
+				}
+
+				atomic.AddUint32(&s[n], 1)
+			}
+			w.Done()
+		}()
+	}
+	w.Wait()
+
+	for i := 0; i < c*1000; i++ {
+		if s[i] != 1 {
+			t.Errorf("expected 1, got %d", s[i])
 		}
 	}
 }
