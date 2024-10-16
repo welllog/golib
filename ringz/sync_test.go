@@ -234,14 +234,15 @@ func TestSyncRing_PushWaitAndPopWait(t *testing.T) {
 func TestSyncRing_PopWait(t *testing.T) {
 	c := runtime.GOMAXPROCS(0)
 
-	r := NewSync[int](c * 1000)
-	s := make([]uint32, c*1000)
+	seg := 10000
+	r := NewSync[int](c * seg)
+	s := make([]uint32, c*seg)
 
 	var w sync.WaitGroup
 	w.Add(2 * c)
 	for i := 0; i < c; i++ {
 		go func(n int) {
-			for i := n * 1000; i < (n+1)*1000; i++ {
+			for i := n * seg; i < (n+1)*seg; i++ {
 				r.PushWait(i, -1)
 			}
 			w.Done()
@@ -256,7 +257,7 @@ func TestSyncRing_PopWait(t *testing.T) {
 				atomic.AddUint32(&s[n], 1)
 
 				count++
-				if count == 500 {
+				if count == seg/2 {
 					break
 				}
 			}
@@ -266,27 +267,35 @@ func TestSyncRing_PopWait(t *testing.T) {
 
 	w.Wait()
 
-	if r.Len() != 500*c {
-		t.Errorf("expected length %d, got %d", 500*c, r.Len())
+	if r.Len() != seg/2*c {
+		t.Errorf("expected length %d, got %d", seg/2*c, r.Len())
 	}
 
 	w.Add(c)
 	for i := 0; i < c; i++ {
 		go func() {
 			for {
-				n, ok := r.PopWait(3 * time.Second)
-				if !ok {
+				if r.Len() == 0 {
 					break
 				}
 
-				atomic.AddUint32(&s[n], 1)
+				n, ok := r.Pop()
+				if ok {
+					atomic.AddUint32(&s[n], 1)
+				}
+
+				runtime.Gosched()
 			}
 			w.Done()
 		}()
 	}
 	w.Wait()
 
-	for i := 0; i < c*1000; i++ {
+	if r.Len() != 0 {
+		t.Errorf("expected length 0, got %d", r.Len())
+	}
+
+	for i := 0; i < c*seg; i++ {
 		if s[i] != 1 {
 			t.Errorf("expected 1, got %d", s[i])
 		}

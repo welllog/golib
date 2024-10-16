@@ -2,8 +2,8 @@ package listz
 
 import (
 	"runtime"
-	"sync"
 	"sync/atomic"
+	"time"
 	"unsafe"
 )
 
@@ -16,30 +16,26 @@ type SyncList[T any] struct {
 	len  int64
 	head unsafe.Pointer
 	tail unsafe.Pointer
-	pool sync.Pool
 }
 
+// NewSync creates a new SyncList.
 func NewSync[T any]() *SyncList[T] {
 	// Initialize with a dummy node
 	dummy := unsafe.Pointer(&syncNode[T]{})
 	return &SyncList[T]{
 		head: dummy,
 		tail: dummy,
-		pool: sync.Pool{
-			New: func() any {
-				return &syncNode[T]{}
-			},
-		},
 	}
 }
 
+// Len returns the number of elements in the list.
 func (l *SyncList[T]) Len() int {
 	return int(atomic.LoadInt64(&l.len))
 }
 
+// Push adds a value to the end of the list.
 func (l *SyncList[T]) Push(value T) {
-	// node := unsafe.Pointer(&syncNode[T]{value: value})
-	node := unsafe.Pointer(l.getNode(value))
+	node := unsafe.Pointer(&syncNode[T]{value: value})
 
 	for {
 		tail := atomic.LoadPointer(&l.tail)
@@ -65,6 +61,7 @@ func (l *SyncList[T]) Push(value T) {
 	}
 }
 
+// Pop removes and returns the value at the front of the list.
 func (l *SyncList[T]) Pop() (T, bool) {
 	var zero T
 
@@ -84,9 +81,6 @@ func (l *SyncList[T]) Pop() (T, bool) {
 				value := (*syncNode[T])(next).value
 				// Try to swing the head to the next node
 				if atomic.CompareAndSwapPointer(&l.head, head, next) {
-					headNode := (*syncNode[T])(head)
-					l.releaseNode(headNode)
-
 					atomic.AddInt64(&l.len, -1)
 					return value, true
 				}
@@ -97,22 +91,59 @@ func (l *SyncList[T]) Pop() (T, bool) {
 	}
 }
 
+// PopWait removes and returns the value at the front of the list.
+// If maxWait is negative, it will block until the value is popped.
+func (l *SyncList[T]) PopWait(maxWait time.Duration) (T, bool) {
+	if maxWait < 0 {
+		for {
+			if value, ok := l.Pop(); ok {
+				return value, ok
+			}
+
+			runtime.Gosched()
+		}
+	}
+
+	if v, ok := l.Pop(); ok {
+		return v, true
+	}
+
+	var zero T
+	if maxWait == 0 {
+		return zero, false
+	}
+
+	ticker := time.NewTicker(10 * time.Millisecond)
+	begin := time.Now()
+
+	for {
+		now := <-ticker.C
+
+		if v, ok := l.Pop(); ok {
+			ticker.Stop()
+			return v, true
+		}
+
+		if now.Sub(begin) >= maxWait {
+			ticker.Stop()
+			return zero, false
+		}
+	}
+}
+
 func (l *SyncList[T]) push(value T) {
-	node := unsafe.Pointer(l.getNode(value))
-	// node := unsafe.Pointer(&syncNode[T]{value: value})
+	node := unsafe.Pointer(&syncNode[T]{value: value})
 
 	for {
 		tail := atomic.LoadPointer(&l.tail)
 		tailNode := (*syncNode[T])(tail)
 		next := atomic.LoadPointer(&tailNode.next)
 
-		if next == nil {
-			if atomic.CompareAndSwapPointer(&tailNode.next, next, node) {
-				// atomic.CompareAndSwapPointer(&l.tail, tail, node)
-				atomic.StorePointer(&l.tail, node)
-				atomic.AddInt64(&l.len, 1)
-				return
-			}
+		if next == nil && atomic.CompareAndSwapPointer(&tailNode.next, next, node) {
+			// atomic.CompareAndSwapPointer(&l.tail, tail, node)
+			atomic.StorePointer(&l.tail, node)
+			atomic.AddInt64(&l.len, 1)
+			return
 		}
 
 		runtime.Gosched()
@@ -131,8 +162,6 @@ func (l *SyncList[T]) pop() (T, bool) {
 	headNode := (*syncNode[T])(head)
 	next := atomic.LoadPointer(&headNode.next)
 	if atomic.CompareAndSwapPointer(&l.head, head, next) {
-		l.releaseNode(headNode)
-
 		node := (*syncNode[T])(next)
 		value := node.value
 		node.value = zero
@@ -141,15 +170,4 @@ func (l *SyncList[T]) pop() (T, bool) {
 	}
 
 	return zero, false
-}
-
-func (l *SyncList[T]) getNode(v T) *syncNode[T] {
-	node := l.pool.Get().(*syncNode[T])
-	node.value = v
-	return node
-}
-
-func (l *SyncList[T]) releaseNode(node *syncNode[T]) {
-	node.next = unsafe.Pointer(nil)
-	l.pool.Put(node)
 }

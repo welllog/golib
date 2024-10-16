@@ -83,14 +83,14 @@ func TestSyncList_Pop(t *testing.T) {
 	}
 
 	c := runtime.GOMAXPROCS(0)
-	s := make([]uint32, c*1000)
+	seg := 100000
+	s := make([]uint32, c*seg)
 	var w sync.WaitGroup
 	w.Add(2 * c)
 	for i := 0; i < c; i++ {
 		go func(n int) {
-			for i := n * 1000; i < (n+1)*1000; i++ {
+			for i := n * seg; i < (n+1)*seg; i++ {
 				l.push(i)
-				// l.Push(i)
 			}
 			w.Done()
 		}(i)
@@ -101,11 +101,10 @@ func TestSyncList_Pop(t *testing.T) {
 			var count int
 			for {
 				n, ok := l.pop()
-				// n, ok := l.Pop()
 				if ok {
 					atomic.AddUint32(&s[n], 1)
 					count++
-					if count == 500 {
+					if count == seg/2 {
 						break
 					}
 				}
@@ -118,8 +117,8 @@ func TestSyncList_Pop(t *testing.T) {
 
 	w.Wait()
 
-	if l.Len() != 500*c {
-		t.Errorf("expected length %d, got %d", 500*c, l.Len())
+	if l.Len() != seg/2*c {
+		t.Errorf("expected length %d, got %d", seg/2*c, l.Len())
 	}
 
 	w.Add(c)
@@ -131,7 +130,6 @@ func TestSyncList_Pop(t *testing.T) {
 				}
 
 				n, ok := l.pop()
-				// n, ok := l.Pop()
 				if ok {
 					atomic.AddUint32(&s[n], 1)
 				}
@@ -141,9 +139,80 @@ func TestSyncList_Pop(t *testing.T) {
 	}
 	w.Wait()
 
-	for i := 0; i < c*1000; i++ {
+	for i := 0; i < c*seg; i++ {
 		if s[i] != 1 {
-			t.Errorf("expected 1, got %d", s[i])
+			t.Errorf("index %d expected 1, got %d", i, s[i])
+		}
+	}
+}
+
+func TestSyncList_Pop2(t *testing.T) {
+	l := NewSync[int]()
+	_, ok := l.Pop()
+	if ok {
+		t.Errorf("expected false, got true")
+	}
+
+	c := runtime.GOMAXPROCS(0)
+	seg := 10000
+	s := make([]uint32, c*seg)
+	var w sync.WaitGroup
+	w.Add(2 * c)
+	for i := 0; i < c; i++ {
+		go func(n int) {
+			for i := n * seg; i < (n+1)*seg; i++ {
+				l.Push(i)
+			}
+			w.Done()
+		}(i)
+	}
+
+	for i := 0; i < c; i++ {
+		go func() {
+			var count int
+			for {
+				n, ok := l.Pop()
+				if ok {
+					atomic.AddUint32(&s[n], 1)
+					count++
+					if count == seg/2 {
+						break
+					}
+				}
+
+				runtime.Gosched()
+			}
+			w.Done()
+		}()
+	}
+
+	w.Wait()
+
+	if l.Len() != seg/2*c {
+		t.Errorf("expected length %d, got %d", seg/2*c, l.Len())
+	}
+
+	w.Add(c)
+	for i := 0; i < c; i++ {
+		go func() {
+			for {
+				if l.Len() == 0 {
+					break
+				}
+
+				n, ok := l.Pop()
+				if ok {
+					atomic.AddUint32(&s[n], 1)
+				}
+			}
+			w.Done()
+		}()
+	}
+	w.Wait()
+
+	for i := 0; i < c*seg; i++ {
+		if s[i] != 1 {
+			t.Errorf("index %d expected 1, got %d", i, s[i])
 		}
 	}
 }
@@ -167,31 +236,20 @@ func BenchmarkSyncList(b *testing.B) {
 		})
 	})
 
-	// b.Run("push", func(b *testing.B) {
-	// 	b.ResetTimer()
-	// 	b.ReportAllocs()
-	// 	b.RunParallel(func(pb *testing.PB) {
-	// 		for pb.Next() {
-	// 			l.push(1)
-	// 			for {
-	// 				_, ok := l.pop()
-	// 				if ok {
-	// 					break
-	// 				}
-	// 				runtime.Gosched()
-	// 			}
-	// 		}
-	// 	})
-	// })
-
-}
-
-func BenchmarkPool(b *testing.B) {
-	l := NewSync[int]()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			n := l.getNode(1)
-			l.releaseNode(n)
-		}
+	b.Run("push", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				l.push(1)
+				for {
+					_, ok := l.pop()
+					if ok {
+						break
+					}
+					runtime.Gosched()
+				}
+			}
+		})
 	})
 }
