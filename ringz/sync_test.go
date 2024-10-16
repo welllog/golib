@@ -282,9 +282,9 @@ func TestSyncRing_PopWait(t *testing.T) {
 				n, ok := r.Pop()
 				if ok {
 					atomic.AddUint32(&s[n], 1)
+				} else {
+					runtime.Gosched()
 				}
-
-				runtime.Gosched()
 			}
 			w.Done()
 		}()

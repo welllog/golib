@@ -83,7 +83,7 @@ func TestSyncList_Pop(t *testing.T) {
 	}
 
 	c := runtime.GOMAXPROCS(0)
-	seg := 100000
+	seg := 1000000
 	s := make([]uint32, c*seg)
 	var w sync.WaitGroup
 	w.Add(2 * c)
@@ -132,6 +132,8 @@ func TestSyncList_Pop(t *testing.T) {
 				n, ok := l.pop()
 				if ok {
 					atomic.AddUint32(&s[n], 1)
+				} else {
+					runtime.Gosched()
 				}
 			}
 			w.Done()
@@ -203,6 +205,8 @@ func TestSyncList_Pop2(t *testing.T) {
 				n, ok := l.Pop()
 				if ok {
 					atomic.AddUint32(&s[n], 1)
+				} else {
+					runtime.Gosched()
 				}
 			}
 			w.Done()
