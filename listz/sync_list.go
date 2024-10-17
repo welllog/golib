@@ -42,19 +42,11 @@ func (l *SyncList[T]) Push(value T) {
 		tailNode := (*syncNode[T])(tail)
 		next := atomic.LoadPointer(&tailNode.next)
 
-		if tail == atomic.LoadPointer(&l.tail) {
-			if next == nil { // tail is really pointing to the last node
-				// Try to link the node at the end of the list
-				if atomic.CompareAndSwapPointer(&tailNode.next, next, node) {
-					// CAS succeeded, try to swing the tail to the inserted node
-					atomic.CompareAndSwapPointer(&l.tail, tail, node)
-					atomic.AddInt64(&l.len, 1)
-					return
-				}
-			} else {
-				// The tail was not pointing to the last node, try to swing the tail to the next node
-				atomic.CompareAndSwapPointer(&l.tail, tail, next)
-			}
+		if next == nil && atomic.CompareAndSwapPointer(&tailNode.next, next, node) {
+			// atomic.CompareAndSwapPointer(&l.tail, tail, node)
+			atomic.StorePointer(&l.tail, node)
+			atomic.AddInt64(&l.len, 1)
+			return
 		}
 
 		runtime.Gosched()
@@ -62,33 +54,27 @@ func (l *SyncList[T]) Push(value T) {
 }
 
 // Pop removes and returns the value at the front of the list.
+// If the list is empty or concurrent Pop is in progress, it returns false.
 func (l *SyncList[T]) Pop() (T, bool) {
+	head := atomic.LoadPointer(&l.head)
+	tail := atomic.LoadPointer(&l.tail)
+
 	var zero T
-
-	for {
-		head := atomic.LoadPointer(&l.head)
-		tail := atomic.LoadPointer(&l.tail)
-		next := atomic.LoadPointer(&((*syncNode[T])(head)).next)
-
-		if head == atomic.LoadPointer(&l.head) {
-			if head == tail { // The list is empty or tail is lagging behind
-				if next == nil {
-					return zero, false
-				}
-				// Try to swing the tail to the next node
-				atomic.CompareAndSwapPointer(&l.tail, tail, next)
-			} else {
-				value := (*syncNode[T])(next).value
-				// Try to swing the head to the next node
-				if atomic.CompareAndSwapPointer(&l.head, head, next) {
-					atomic.AddInt64(&l.len, -1)
-					return value, true
-				}
-			}
-		}
-
-		runtime.Gosched()
+	if head == tail {
+		return zero, false
 	}
+
+	headNode := (*syncNode[T])(head)
+	next := atomic.LoadPointer(&headNode.next)
+	if atomic.CompareAndSwapPointer(&l.head, head, next) {
+		node := (*syncNode[T])(next)
+		value := node.value
+		node.value = zero
+		atomic.AddInt64(&l.len, -1)
+		return value, true
+	}
+
+	return zero, false
 }
 
 // PopWait removes and returns the value at the front of the list.
@@ -129,45 +115,4 @@ func (l *SyncList[T]) PopWait(maxWait time.Duration) (T, bool) {
 			return zero, false
 		}
 	}
-}
-
-func (l *SyncList[T]) push(value T) {
-	node := unsafe.Pointer(&syncNode[T]{value: value})
-
-	for {
-		tail := atomic.LoadPointer(&l.tail)
-		tailNode := (*syncNode[T])(tail)
-		next := atomic.LoadPointer(&tailNode.next)
-
-		if next == nil && atomic.CompareAndSwapPointer(&tailNode.next, next, node) {
-			// atomic.CompareAndSwapPointer(&l.tail, tail, node)
-			atomic.StorePointer(&l.tail, node)
-			atomic.AddInt64(&l.len, 1)
-			return
-		}
-
-		runtime.Gosched()
-	}
-}
-
-func (l *SyncList[T]) pop() (T, bool) {
-	head := atomic.LoadPointer(&l.head)
-	tail := atomic.LoadPointer(&l.tail)
-
-	var zero T
-	if head == tail {
-		return zero, false
-	}
-
-	headNode := (*syncNode[T])(head)
-	next := atomic.LoadPointer(&headNode.next)
-	if atomic.CompareAndSwapPointer(&l.head, head, next) {
-		node := (*syncNode[T])(next)
-		value := node.value
-		node.value = zero
-		atomic.AddInt64(&l.len, -1)
-		return value, true
-	}
-
-	return zero, false
 }
