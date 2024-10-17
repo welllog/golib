@@ -994,3 +994,184 @@ func TestValues(t *testing.T) {
 		})
 	}
 }
+
+func TestSubSlice(t *testing.T) {
+	type args struct {
+		s     []int
+		start int
+		end   int
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{
+			name: "Normal case",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				start: 1,
+				end:   3,
+			},
+			want: []int{2, 3},
+		},
+		{
+			name: "Start index greater than length",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				start: 6,
+				end:   8,
+			},
+			want: nil,
+		},
+		{
+			name: "Start index less than 0",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				start: -1,
+				end:   3,
+			},
+			want: []int{1, 2, 3},
+		},
+		{
+			name: "End index less than 0",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				start: 1,
+				end:   -1,
+			},
+			want: []int{2, 3, 4, 5},
+		},
+		{
+			name: "End index greater than length",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				start: 1,
+				end:   10,
+			},
+			want: []int{2, 3, 4, 5},
+		},
+		{
+			name: "Start index equal to end index",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				start: 2,
+				end:   2,
+			},
+			want: nil,
+		},
+		{
+			name: "Start index greater than end index",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				start: 3,
+				end:   2,
+			},
+			want: nil,
+		},
+		{
+			name: "Empty slice",
+			args: args{
+				s:     []int{},
+				start: 0,
+				end:   1,
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SubSlice(tt.args.s, tt.args.start, tt.args.end); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SubSlice() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+func TestRemove(t *testing.T) {
+	type args struct {
+		s     []int
+		index int
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantSlice []int
+		wantElem  int
+		wantOk    bool
+	}{
+		{
+			name: "Remove element at index 0",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				index: 0,
+			},
+			wantSlice: []int{2, 3, 4, 5},
+			wantElem:  1,
+			wantOk:    true,
+		},
+		{
+			name: "Remove element at index 2",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				index: 2,
+			},
+			wantSlice: []int{1, 2, 4, 5},
+			wantElem:  3,
+			wantOk:    true,
+		},
+		{
+			name: "Remove element at last index",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				index: 4,
+			},
+			wantSlice: []int{1, 2, 3, 4},
+			wantElem:  5,
+			wantOk:    true,
+		},
+		{
+			name: "Remove element from empty slice",
+			args: args{
+				s:     []int{},
+				index: 0,
+			},
+			wantSlice: []int{},
+			wantElem:  0,
+			wantOk:    false,
+		},
+		{
+			name: "Remove element with negative index",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				index: -1,
+			},
+			wantSlice: []int{1, 2, 3, 4, 5},
+			wantElem:  0,
+			wantOk:    false,
+		},
+		{
+			name: "Remove element with out of range index",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				index: 5,
+			},
+			wantSlice: []int{1, 2, 3, 4, 5},
+			wantElem:  0,
+			wantOk:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSlice, gotElem, gotOk := Remove(tt.args.s, tt.args.index)
+			if !reflect.DeepEqual(gotSlice, tt.wantSlice) {
+				t.Errorf("Remove() gotSlice = %v, want %v", gotSlice, tt.wantSlice)
+			}
+			if gotElem != tt.wantElem {
+				t.Errorf("Remove() gotElem = %v, want %v", gotElem, tt.wantElem)
+			}
+			if gotOk != tt.wantOk {
+				t.Errorf("Remove() gotOk = %v, want %v", gotOk, tt.wantOk)
+			}
+		})
+	}
+}

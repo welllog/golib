@@ -226,6 +226,26 @@ func IndexFunc[T any](s []T, fn func(T) bool) int {
 	return -1
 }
 
+// SubSlice returns a slice of s from start to end.
+// If end is negative, it will return all elements from start to the end of s.
+func SubSlice[T any](s []T, start int, end int) []T {
+	if start > len(s) {
+		return nil
+	} else if start < 0 {
+		start = 0
+	}
+
+	if end < 0 || end > len(s) {
+		end = len(s)
+	}
+
+	if start >= end {
+		return nil
+	}
+
+	return s[start:end]
+}
+
 // Contains returns true if v is present in s.
 func Contains[T comparable](s []T, v T) bool {
 	return Index(s, v) >= 0
@@ -321,4 +341,20 @@ func Values[T, V any](fn func(T) V, ss ...[]T) []V {
 		}
 	}
 	return ret
+}
+
+// Remove removes the element at the given index from s.
+func Remove[T any](s []T, index int) ([]T, T, bool) {
+	var zero T
+	if index < 0 || index >= len(s) {
+		return s, zero, false
+	}
+
+	last := len(s) - 1
+	v := s[index]
+	if index < last {
+		copy(s[index:], s[index+1:])
+	}
+	s[last] = zero
+	return s[:last], v, true
 }

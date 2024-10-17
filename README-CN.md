@@ -8,12 +8,15 @@
 ###
 * ``cryptz`` 加解密相关函数
 * ``ctxz`` ctx相关函数
-* ``dsz`` 数据和结构相关类型、函数
 * ``goz`` goroutine相关函数
 * ``hashz`` hash相关函数
+* ``heapz`` 堆相关实现
+* ``listz`` 链表相关实现
 * ``mapz`` map相关函数
 * ``mathz`` math相关函数
 * ``randz`` 随机相关函数
+* ``ringz`` 环形队列相关实现
+* ``setz`` 集合相关函数
 * ``slicez`` 切片相关函数
 * ``sortz`` sort相关函数
 * ``testz`` test相关函数

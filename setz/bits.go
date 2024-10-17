@@ -1,4 +1,4 @@
-package dsz
+package setz
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 )
 
 // Bits is a set of bits.
-// Deprecated: use setz.Bits instead.
 type Bits struct {
 	length int
 	set    []uint64
