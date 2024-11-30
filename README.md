@@ -6,6 +6,7 @@
 a tool library based on Go standard library, designed for performance, flexibility and simplicity, and enhanced code reuse by introducing generics.
 
 ###
+* ``algz`` algorithm related functions
 * ``cryptz`` encryption and decryption related functions
 * ``ctxz`` ctx related functions
 * ``goz`` goroutine related functions

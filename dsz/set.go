@@ -114,7 +114,7 @@ func (s Set[T]) IntersectWithSlice(other []T) {
 }
 
 // SetFromSlice fills dst with src
-// Deprecated: direct use MultiAdd of setz.Set instead.
+// Deprecated: direct use AddAll of setz.Set instead.
 func SetFromSlice[T comparable](dst Set[T], src []T) {
 	for _, v := range src {
 		dst[v] = struct{}{}
