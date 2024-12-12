@@ -189,45 +189,48 @@ func (t *Trie) PrefixSearch(key string) []string {
 		node = node.children[idx].node
 	}
 
-	nodeStack := make([]*trieNode, 0, 10)
-	nodeStack = append(nodeStack, node)
-	runeStack := make([]runeDepth, 0, 10)
+	if len(node.children) == 0 {
+		if node.isEnd {
+			return []string{key}
+		}
+		return nil
+	}
 
 	var buf bytes.Buffer
-	buf.Grow(len(key) + 64)
-	buf.WriteString(key)
-
+	buf.Grow(24)
 	var ret []string
-	var depth int
-	for len(nodeStack) > 0 {
-		cur := nodeStack[len(nodeStack)-1]
-		nodeStack = nodeStack[:len(nodeStack)-1]
+	stack := make([]trieFrame, 0, 32)
 
-		if len(runeStack) > 0 {
-			buf.WriteRune(runeStack[len(runeStack)-1].r)
-			runeStack = runeStack[:len(runeStack)-1]
-		}
+	buf.WriteString(key)
+	if node.isEnd {
+		ret = append(ret, key)
+	}
+	for _, ch := range node.children {
+		stack = append(stack, trieFrame{ch.val, 0, ch.node})
+	}
 
-		if cur.isEnd {
+	for len(stack) > 0 {
+		last := len(stack) - 1
+		cur := stack[last]
+		stack = stack[:last]
+
+		buf.WriteRune(cur.r)
+		if cur.node.isEnd {
 			ret = append(ret, buf.String())
 		}
 
-		depth++
-
-		if len(cur.children) == 0 {
-			if len(runeStack) == 0 {
+		if len(cur.node.children) == 0 {
+			if len(stack) == 0 {
 				break
 			}
 
-			curDepth := runeStack[len(runeStack)-1].depth
-			buf.Truncate(buf.Len() - (depth - curDepth))
-			depth = curDepth
+			back := int(cur.depth + 1 - stack[last-1].depth)
+			buf.Truncate(buf.Len() - back)
 			continue
 		}
 
-		for _, child := range cur.children {
-			nodeStack = append(nodeStack, child.node)
-			runeStack = append(runeStack, runeDepth{child.val, depth})
+		for _, child := range cur.node.children {
+			stack = append(stack, trieFrame{child.val, cur.depth + 1, child.node})
 		}
 	}
 
@@ -236,6 +239,10 @@ func (t *Trie) PrefixSearch(key string) []string {
 
 // FuzzySearch returns all patterns that are similar to the key.
 func (t *Trie) FuzzySearch(key string) []string {
+	if len(key) == 0 {
+		return t.PrefixSearch(key)
+	}
+
 	node := &t.root
 	for _, v := range key {
 		idx := t.index(node.children, v)
@@ -251,46 +258,49 @@ func (t *Trie) FuzzySearch(key string) []string {
 		node = node.children[idx].node
 	}
 
-	nodeStack := make([]*trieNode, 0, 10)
-	runeStack := make([]runeDepth, 0, 10)
-	var ret []string
+	if len(node.children) == 0 && node.fail == &t.root {
+		if node.isEnd {
+			return []string{key[len(key)-node.size:]}
+		}
+		return nil
+	}
+
 	var buf bytes.Buffer
-	buf.Grow(len(key) + 64)
+	buf.Grow(24)
+	var ret []string
+	stack := make([]trieFrame, 0, 32)
 
 	for node != &t.root {
-		nodeStack = append(nodeStack, node)
 		buf.WriteString(key[len(key)-node.size:])
+		if node.isEnd {
+			ret = append(ret, key[len(key)-node.size:])
+		}
+		for _, ch := range node.children {
+			stack = append(stack, trieFrame{ch.val, 0, ch.node})
+		}
 
-		var depth int
-		for len(nodeStack) > 0 {
-			cur := nodeStack[len(nodeStack)-1]
-			nodeStack = nodeStack[:len(nodeStack)-1]
+		for len(stack) > 0 {
+			last := len(stack) - 1
+			cur := stack[last]
+			stack = stack[:last]
 
-			if len(runeStack) > 0 {
-				buf.WriteRune(runeStack[len(runeStack)-1].r)
-				runeStack = runeStack[:len(runeStack)-1]
-			}
-
-			if cur.isEnd {
+			buf.WriteRune(cur.r)
+			if cur.node.isEnd {
 				ret = append(ret, buf.String())
 			}
 
-			depth++
-
-			if len(cur.children) == 0 {
-				if len(runeStack) == 0 {
+			if len(cur.node.children) == 0 {
+				if len(stack) == 0 {
 					break
 				}
 
-				curDepth := runeStack[len(runeStack)-1].depth
-				buf.Truncate(buf.Len() - (depth - curDepth))
-				depth = curDepth
+				back := int(cur.depth + 1 - stack[last-1].depth)
+				buf.Truncate(buf.Len() - back)
 				continue
 			}
 
-			for _, child := range cur.children {
-				nodeStack = append(nodeStack, child.node)
-				runeStack = append(runeStack, runeDepth{child.val, depth})
+			for _, child := range cur.node.children {
+				stack = append(stack, trieFrame{child.val, cur.depth + 1, child.node})
 			}
 		}
 
@@ -390,7 +400,8 @@ func decodeRune(s string, i int) (rune, int) {
 	return r, size
 }
 
-type runeDepth struct {
+type trieFrame struct {
 	r     rune
-	depth int
+	depth int32
+	node  *trieNode
 }

@@ -270,7 +270,7 @@ func TestTrie_PrefixSearch(t *testing.T) {
 	expect2 := []string{"hello", "hello world", "hello bob"}
 	for i, v := range ret2 {
 		if v != expect2[i] {
-			t.Errorf("expected %s, got %s", expect1[i], v)
+			t.Errorf("expected %s, got %s", expect2[i], v)
 		}
 	}
 
@@ -285,6 +285,14 @@ func TestTrie_PrefixSearch(t *testing.T) {
 	ret4 := trie1.PrefixSearch("happy world")
 	if len(ret4) != 0 {
 		t.Errorf("expected empty, got %v", ret4)
+	}
+
+	ret5 := trie1.PrefixSearch("")
+	expect5 := []string{"world", "world war", "world peace", "hey", "hello", "hello world", "hello bob", "happy", "happiness"}
+	for i, v := range ret5 {
+		if v != expect5[i] {
+			t.Errorf("expected %s, got %s", expect5[i], v)
+		}
 	}
 }
 
