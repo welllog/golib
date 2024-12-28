@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/welllog/golib/ringz"
 )
 
 type Trie struct {
@@ -62,16 +60,16 @@ func (t *Trie) Insert(pattern string) {
 
 // BuildFailureLinks builds failure links for the trie.
 func (t *Trie) BuildFailureLinks() {
-	var queue ringz.Ring[*trieNode]
+	var queue trieNodeQueue
 	queue.Init(10)
 
 	for i := range t.root.children {
 		t.root.children[i].node.fail = &t.root
-		queue.PushWithExpand(t.root.children[i].node)
+		queue.Push(t.root.children[i].node)
 	}
 
 	for !queue.IsEmpty() {
-		curr, _ := queue.Pop()
+		curr := queue.Pop()
 		for _, child := range curr.children {
 			failNode := curr.fail
 			var idx int
@@ -89,7 +87,7 @@ func (t *Trie) BuildFailureLinks() {
 				child.node.fail = failNode.children[idx].node
 			}
 
-			queue.PushWithExpand(child.node)
+			queue.Push(child.node)
 		}
 	}
 }
@@ -404,4 +402,60 @@ type trieFrame struct {
 	r     rune
 	depth int32
 	node  *trieNode
+}
+
+type trieNodeQueue struct {
+	nodes []*trieNode
+	head  uint32
+	tail  uint32
+	cap   uint32
+}
+
+func (q *trieNodeQueue) Init(cap int) {
+	q.nodes = make([]*trieNode, cap)
+	q.cap = uint32(cap)
+}
+
+func (q *trieNodeQueue) IsFull() bool {
+	return q.tail-q.head == q.cap
+}
+
+func (q *trieNodeQueue) IsEmpty() bool {
+	return q.head == q.tail
+}
+
+func (q *trieNodeQueue) Push(node *trieNode) {
+	if q.IsFull() {
+		tailPos := (q.tail - 1) % q.cap
+		headPos := q.head % q.cap
+
+		q.cap = q.cap * 2
+		newNodes := make([]*trieNode, q.cap)
+		if tailPos > headPos {
+			copy(newNodes, q.nodes[headPos:tailPos+1])
+		} else {
+			n := copy(newNodes, q.nodes[headPos:])
+			copy(newNodes[n:], q.nodes[:tailPos+1])
+		}
+		q.nodes = newNodes
+		q.tail = q.tail - q.head
+		q.head = 0
+	}
+
+	q.nodes[q.tail%q.cap] = node
+	q.tail++
+}
+
+func (q *trieNodeQueue) Pop() *trieNode {
+	if q.IsEmpty() {
+		return nil
+	}
+
+	node := q.nodes[q.head%q.cap]
+	q.head++
+	return node
+}
+
+func (q *trieNodeQueue) Len() int {
+	return int(q.tail - q.head)
 }

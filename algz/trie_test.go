@@ -3,6 +3,8 @@ package algz
 import (
 	"strings"
 	"testing"
+
+	"github.com/welllog/golib/testz"
 )
 
 func TestTrie_Match(t *testing.T) {
@@ -343,6 +345,43 @@ func TestTrie_FuzzySearch(t *testing.T) {
 	}
 }
 
+func TestTrieNodeQueue_Init(t *testing.T) {
+	q := trieNodeQueue{}
+	q.Init(10)
+
+	for i := 0; i < 10; i++ {
+		q.Push(&trieNode{size: i})
+	}
+	testz.Equal(t, 10, q.Len())
+	for i := 0; i < 10; i++ {
+		node := q.Pop()
+		testz.Equal(t, i, node.size)
+		q.Push(&trieNode{size: i})
+	}
+	testz.Equal(t, 10, q.Len())
+
+	for i := 10; i < 20; i++ {
+		q.Push(&trieNode{size: i})
+	}
+	testz.Equal(t, 20, q.Len())
+	for i := 0; i < 20; i++ {
+		node := q.Pop()
+		testz.Equal(t, i, node.size)
+	}
+	if q.Pop() != nil {
+		t.Error("expected nil")
+	}
+
+	for i := 0; i < 100000; i++ {
+		for j := 0; j < 10; j++ {
+			q.Push(&trieNode{size: i + j})
+		}
+		for j := 0; j < 10; j++ {
+			testz.Equal(t, q.Pop().size, i+j)
+		}
+	}
+}
+
 func BenchmarkTrie_Search(b *testing.B) {
 	patterns := []string{
 		"Unlimited and uncontrolled growth", "yes", "excited", "happy", "boring",
@@ -427,7 +466,6 @@ func newAhoCorasick() *ahoCorasick {
 	}
 }
 
-// 插入模式串
 func (ac *ahoCorasick) Insert(pattern string) {
 	if len(pattern) == 0 {
 		return
@@ -445,7 +483,6 @@ func (ac *ahoCorasick) Insert(pattern string) {
 	node.isEnd = true
 }
 
-// 构建失败指针
 func (ac *ahoCorasick) BuildFailureLinks() {
 	queue := make([]*trieNode1, 0, 3)
 
