@@ -1,7 +1,6 @@
 package listz
 
 import (
-	"math/bits"
 	"math/rand"
 	"time"
 )
@@ -192,10 +191,34 @@ func (s *SkipListWithCmp[K, V]) RangeWithRange(start, end K, f func(K, V) bool) 
 	})
 }
 
-func (s *SkipListWithCmp[K, V]) randomLevel() int {
-	// k is a random number in [0, 2^maxLevel)
-	k := s.rand.Uint64() & zoneMask
-	return ((maxLevel - bits.Len64(k)) & levelMask) + 1
+// Keys returns all keys in the skip list.
+func (s *SkipListWithCmp[K, V]) Keys() []K {
+	if s.len == 0 {
+		return nil
+	}
+
+	keys := make([]K, s.len)
+	var i int
+	for e := s.head.next[0]; e != nil; e = e.next[0] {
+		keys[i] = e.key
+		i++
+	}
+	return keys
+}
+
+// Values returns all values in the skip list.
+func (s *SkipListWithCmp[K, V]) Values() []V {
+	if s.len == 0 {
+		return nil
+	}
+
+	vals := make([]V, s.len)
+	var i int
+	for e := s.head.next[0]; e != nil; e = e.next[0] {
+		vals[i] = e.val
+		i++
+	}
+	return vals
 }
 
 // set sets the value associated with the key.
@@ -234,7 +257,7 @@ func (s *SkipListWithCmp[K, V]) set(key K, val V, mode int) bool {
 		return false
 	}
 
-	level := s.randomLevel()
+	level := randomLevel(s.rand)
 	if level > s.level {
 		level = s.level + 1
 		for i := s.level; i < level; i++ {

@@ -199,16 +199,40 @@ func (s *SkipList[K, V]) RangeWithRange(start, end K, f func(key K, val V) bool)
 	})
 }
 
+// Keys returns all keys in the skip list.
+func (s *SkipList[K, V]) Keys() []K {
+	if s.len == 0 {
+		return nil
+	}
+
+	keys := make([]K, s.len)
+	var i int
+	for e := s.head.next[0]; e != nil; e = e.next[0] {
+		keys[i] = e.key
+		i++
+	}
+	return keys
+}
+
+// Values returns all values in the skip list.
+func (s *SkipList[K, V]) Values() []V {
+	if s.len == 0 {
+		return nil
+	}
+
+	vals := make([]V, s.len)
+	var i int
+	for e := s.head.next[0]; e != nil; e = e.next[0] {
+		vals[i] = e.val
+		i++
+	}
+	return vals
+}
+
 func (s *SkipList[K, V]) lazyInit() {
 	if s.head.next == nil {
 		s.Init()
 	}
-}
-
-func (s *SkipList[K, V]) randomLevel() int {
-	// k is a random number in [0, 2^maxLevel)
-	k := s.rand.Uint64() & zoneMask
-	return ((maxLevel - bits.Len64(k)) & levelMask) + 1
 }
 
 // set the value associated with the key
@@ -248,7 +272,7 @@ func (s *SkipList[K, V]) set(key K, val V, mode int) bool {
 		return false
 	}
 
-	level := s.randomLevel()
+	level := randomLevel(s.rand)
 	if level > s.level {
 		level = s.level + 1
 		for i := s.level; i < level; i++ {
@@ -270,4 +294,10 @@ func (s *SkipList[K, V]) set(key K, val V, mode int) bool {
 
 	s.len++
 	return true
+}
+
+func randomLevel(r *rand.Rand) int {
+	// k is a random number in [0, 2^maxLevel)
+	k := r.Uint64() & zoneMask
+	return ((maxLevel - bits.Len64(k)) & levelMask) + 1
 }

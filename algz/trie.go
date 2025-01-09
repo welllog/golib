@@ -364,7 +364,7 @@ func (t *Trie) index(children []childNode, val rune) int {
 	}
 
 	for low < high {
-		mid := (low + high) / 2
+		mid := int(uint(low+high) >> 1)
 		if children[mid].val == val {
 			return mid
 		} else if children[mid].val < val {
@@ -379,7 +379,7 @@ func (t *Trie) index(children []childNode, val rune) int {
 func (t *Trie) findChildIndex(children []childNode, val rune) int {
 	low, high := 0, len(children)
 	for low < high {
-		mid := (low + high) / 2
+		mid := int(uint(low+high) >> 1)
 		if children[mid].val < val {
 			low = mid + 1
 		} else {
