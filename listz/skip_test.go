@@ -548,3 +548,79 @@ func BenchmarkSkipList_Remove(b *testing.B) {
 		})
 	})
 }
+
+func BenchmarkSkipList_Set2(b *testing.B) {
+	b.Run("ordered", func(b *testing.B) {
+		b.Run("map", func(b *testing.B) {
+			m := make(map[int]int)
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				m[i] = i
+			}
+		})
+
+		b.Run("skip_list", func(b *testing.B) {
+			var l SkipList[int, int]
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				l.Set(i, i)
+			}
+		})
+
+		b.Run("skip_list_with_cmp", func(b *testing.B) {
+			l := NewSkipListWithCmp[int, int](cmpInt)
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				l.Set(i, i)
+			}
+		})
+	})
+
+	b.Run("not_ordered", func(b *testing.B) {
+		b.Run("map", func(b *testing.B) {
+			m := make(map[int]int)
+			b.ReportAllocs()
+			for i := 0; i < b.N; i += 4 {
+				m[i+3] = i
+				m[i+2] = i
+				m[i+1] = i
+				m[i] = i
+			}
+		})
+
+		b.Run("skip_list", func(b *testing.B) {
+			var l SkipList[int, int]
+			b.ReportAllocs()
+			for i := 0; i < b.N; i += 4 {
+				l.Set(i+3, i)
+				l.Set(i+2, i)
+				l.Set(i+1, i)
+				l.Set(i, i)
+			}
+		})
+
+		b.Run("skip_list_with_cmp", func(b *testing.B) {
+			l := NewSkipListWithCmp[int, int](cmpInt)
+			b.ReportAllocs()
+			for i := 0; i < b.N; i += 4 {
+				l.Set(i+3, i)
+				l.Set(i+2, i)
+				l.Set(i+1, i)
+				l.Set(i, i)
+			}
+		})
+	})
+
+}
+
+func cmpInt(a int, b int) int {
+	if a < b {
+		return -1
+	}
+
+	if a > b {
+		return 1
+	}
+
+	return 0
+}
