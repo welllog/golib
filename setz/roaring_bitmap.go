@@ -224,7 +224,7 @@ func (i *arrayContainerIter) Value() uint16 {
 
 type bitmapContainer Bits
 
-type bitmapContainerIter BitsIter
+type bitmapContainerIter BitmapIter
 
 func (b *bitmapContainer) Add(x uint16, buf []uint16) (container, bool) {
 	return b, (*Bits)(b).Add(uint(x))
@@ -252,11 +252,11 @@ func (b *bitmapContainer) Iter() uint16Iter {
 }
 
 func (i *bitmapContainerIter) Next() bool {
-	return (*BitsIter)(i).Next()
+	return (*BitmapIter)(i).Next()
 }
 
 func (i *bitmapContainerIter) Value() uint16 {
-	return uint16((*BitsIter)(i).Value())
+	return uint16((*BitmapIter)(i).Value())
 }
 
 func (b *bitmapContainer) setZero() {

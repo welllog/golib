@@ -35,24 +35,42 @@ func (b *Bits) Len() int {
 	return b.length
 }
 
-// BitsIter is an iterator for Bits.
-type BitsIter struct {
-	bits *Bitmap
+// Diff removes numbers in other from the set.
+func (b *Bits) Diff(other Bits) {
+	b.Bitmap.Diff(other.Bitmap)
+	b.length = b.Bitmap.Len()
+}
+
+// Intersect removes numbers not in other from the set.
+func (b *Bits) Intersect(other Bits) {
+	b.Bitmap.Intersect(other.Bitmap)
+	b.length = b.Bitmap.Len()
+}
+
+// Merge adds numbers in other to the set.
+func (b *Bits) Merge(other Bits) {
+	b.Bitmap.Merge(other.Bitmap)
+	b.length = b.Bitmap.Len()
+}
+
+// BitmapIter is an iterator for Bitmap.
+type BitmapIter struct {
+	bm   *Bitmap
 	i    int
 	j    int
 	read bool
 }
 
 // Next returns true if there is a next value.
-func (bi *BitsIter) Next() bool {
+func (bi *BitmapIter) Next() bool {
 	if bi.read {
 		bi.read = false
 		bi.j++
 	}
 
-	for bi.i < len(bi.bits.set) {
+	for bi.i < len(bi.bm.set) {
 		for bi.j < 64 {
-			if bi.bits.set[bi.i]&(1<<bi.j) != 0 {
+			if bi.bm.set[bi.i]&(1<<bi.j) != 0 {
 				bi.read = true
 				return true
 			}
@@ -67,7 +85,7 @@ func (bi *BitsIter) Next() bool {
 }
 
 // Value returns the current value.
-func (bi *BitsIter) Value() uint {
+func (bi *BitmapIter) Value() uint {
 	return uint(bi.i<<6 + bi.j)
 }
 
@@ -134,9 +152,9 @@ func (b *Bitmap) Cap() int {
 	return len(b.set) << 6
 }
 
-// Iter returns a new BitsIter.
-func (b *Bitmap) Iter() BitsIter {
-	return BitsIter{bits: b}
+// Iter returns a new BitmapIter.
+func (b *Bitmap) Iter() BitmapIter {
+	return BitmapIter{bm: b}
 }
 
 // Range calls fn for each number in the set.
@@ -171,6 +189,45 @@ func (b *Bitmap) String() string {
 	}
 	buf.WriteByte('}')
 	return buf.String()
+}
+
+// Diff removes numbers in other from the set.
+func (b *Bitmap) Diff(other Bitmap) {
+	for i := 0; i < len(b.set); i++ {
+		if i >= len(other.set) {
+			break
+		}
+		b.set[i] &= ^other.set[i]
+	}
+}
+
+// Intersect removes numbers not in other from the set.
+func (b *Bitmap) Intersect(other Bitmap) {
+	for i := 0; i < len(b.set); i++ {
+		if i >= len(other.set) {
+			b.set[i] = 0
+			continue
+		}
+		b.set[i] &= other.set[i]
+	}
+}
+
+// Merge adds numbers in other to the set.
+func (b *Bitmap) Merge(other Bitmap) {
+	for i := 0; i < len(other.set); i++ {
+		if i >= len(b.set) {
+			b.set = append(b.set, other.set[i])
+			continue
+		}
+		b.set[i] |= other.set[i]
+	}
+}
+
+// Clone returns a copy of the set.
+func (b *Bitmap) Clone() Bitmap {
+	set := make([]uint64, len(b.set))
+	copy(set, b.set)
+	return Bitmap{set: set}
 }
 
 func (b *Bitmap) add(num uint) {

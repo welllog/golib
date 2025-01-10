@@ -140,6 +140,90 @@ func TestBits_Range(t *testing.T) {
 	testz.Equal(t, 100, count)
 }
 
+func TestBits_Diff(t *testing.T) {
+	m1 := Bits{}
+	m2 := Bits{}
+
+	for i := 1; i <= 100; i++ {
+		m1.Add(uint(i))
+	}
+
+	for i := 50; i <= 150; i++ {
+		m2.Add(uint(i))
+	}
+
+	m1.Diff(m2)
+	testz.Equal(t, 49, m1.Len())
+
+	i := 0
+	m1.Range(func(num uint) bool {
+		i++
+		if i != int(num) {
+			t.Fatalf("invalid value: %d, expected: %d", num, i)
+		}
+		return true
+	})
+	if i != 49 {
+		t.Fatalf("invalid count: %d", i)
+	}
+}
+
+func TestBits_Intersect(t *testing.T) {
+	m1 := Bits{}
+	m2 := Bits{}
+
+	for i := 1; i <= 100; i++ {
+		m1.Add(uint(i))
+	}
+
+	for i := 50; i <= 150; i++ {
+		m2.Add(uint(i))
+	}
+
+	m1.Intersect(m2)
+	testz.Equal(t, 51, m1.Len())
+
+	i := 49
+	m1.Range(func(num uint) bool {
+		i++
+		if i != int(num) {
+			t.Fatalf("invalid value: %d, expected: %d", num, i)
+		}
+		return true
+	})
+	if i != 100 {
+		t.Fatalf("invalid count: %d", i)
+	}
+}
+
+func TestBits_Merge(t *testing.T) {
+	m1 := Bits{}
+	m2 := Bits{}
+
+	for i := 1; i <= 100; i++ {
+		m1.Add(uint(i))
+	}
+
+	for i := 50; i <= 150; i++ {
+		m2.Add(uint(i))
+	}
+
+	m1.Merge(m2)
+	testz.Equal(t, 150, m1.Len())
+
+	i := 0
+	m1.Range(func(num uint) bool {
+		i++
+		if i != int(num) {
+			t.Fatalf("invalid value: %d, expected: %d", num, i)
+		}
+		return true
+	})
+	if i != 150 {
+		t.Fatalf("invalid count: %d", i)
+	}
+}
+
 func BenchmarkBits_Add(b *testing.B) {
 	b.Run("add", func(b *testing.B) {
 		b.ReportAllocs()
