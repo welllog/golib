@@ -3,25 +3,34 @@
 package setz
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/welllog/golib/testz"
 )
 
 func TestBits_All(t *testing.T) {
-	s := []uint{1, 2, 3, 4, 5, 100, 102, 500, 501, 400, 1000, 9, 10}
 	b := Bits{}
 
-	for _, s := range s {
-		b.Add(s)
+	for i := 1; i <= 10000000; i += 8 {
+		b.Add(uint(i))
 	}
 
-	slices.Sort(s)
-
-	var i int
+	i := uint(1)
 	for v := range b.All() {
-		testz.Equal(t, s[i], v)
+		testz.Equal(t, i, v)
+		i += 8
+	}
+}
+
+func TestRoaringBitmap_All(t *testing.T) {
+	b := RoaringBitmap{}
+	for i := 1; i <= 10000000; i++ {
+		b.Add(uint32(i))
+	}
+
+	i := 1
+	for v := range b.All() {
+		testz.Equal(t, uint32(i), v)
 		i++
 	}
 }

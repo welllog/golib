@@ -14,14 +14,30 @@ const (
 	levelMask = maxLevel - 1
 )
 
-type skipNode[K typez.Ordered, V any] struct {
+type SkipNode[K typez.Ordered, V any] struct {
 	key  K
 	val  V
-	next []*skipNode[K, V]
+	next []*SkipNode[K, V]
+}
+
+func (n *SkipNode[K, V]) Key() K {
+	return n.key
+}
+
+func (n *SkipNode[K, V]) Value() V {
+	return n.val
+}
+
+func (n *SkipNode[K, V]) SetValue(val V) {
+	n.val = val
+}
+
+func (n *SkipNode[K, V]) Next() *SkipNode[K, V] {
+	return n.next[0]
 }
 
 type SkipList[K typez.Ordered, V any] struct {
-	head  skipNode[K, V]
+	head  SkipNode[K, V]
 	len   int
 	level int
 	rand  *rand.Rand
@@ -36,7 +52,7 @@ func NewSkipList[K typez.Ordered, V any]() *SkipList[K, V] {
 
 // Init initializes the skip list.
 func (s *SkipList[K, V]) Init() {
-	s.head.next = make([]*skipNode[K, V], maxLevel)
+	s.head.next = make([]*SkipNode[K, V], maxLevel)
 	s.len = 0
 	s.level = 1
 	s.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -64,6 +80,17 @@ func (s *SkipList[K, V]) SetX(key K, val V) bool {
 
 // Get returns the value associated with the key.
 func (s *SkipList[K, V]) Get(key K) (V, bool) {
+	node := s.GetNode(key)
+	if node != nil {
+		return node.val, true
+	}
+
+	var zero V
+	return zero, false
+}
+
+// GetNode returns the node associated with the key.
+func (s *SkipList[K, V]) GetNode(key K) *SkipNode[K, V] {
 	cur := &s.head
 	// if the skip list not initialized, the level is 0, so the loop will not be executed
 	for i := s.level - 1; i >= 0; i-- {
@@ -74,20 +101,27 @@ func (s *SkipList[K, V]) Get(key K) (V, bool) {
 			}
 
 			if next.key == key {
-				return cur.next[i].val, true
+				return next
 			}
 
 			cur = next
 		}
 	}
 
-	var zero V
-	return zero, false
+	return nil
+}
+
+// Head returns the first node of the skip list.
+func (s *SkipList[K, V]) Head() *SkipNode[K, V] {
+	if s.len == 0 {
+		return nil
+	}
+	return s.head.next[0]
 }
 
 // Remove deletes the value associated with the key.
 func (s *SkipList[K, V]) Remove(key K) (V, bool) {
-	update := make([]*skipNode[K, V], maxLevel)
+	update := make([]*SkipNode[K, V], maxLevel)
 	cur := &s.head
 	var curLevel int
 	// if the skip list not initialized, the level is 0, so the loop will not be executed
@@ -121,6 +155,7 @@ func (s *SkipList[K, V]) Remove(key K) (V, bool) {
 	for i := 0; i < curLevel; i++ {
 		update[i].next[i] = cur.next[i]
 	}
+	cur.next = nil
 
 	if curLevel >= s.level {
 		for s.level > 1 && s.head.next[s.level-1] == nil {
@@ -134,7 +169,7 @@ func (s *SkipList[K, V]) Remove(key K) (V, bool) {
 
 // Clear removes all nodes from the skip list.
 func (s *SkipList[K, V]) Clear() {
-	s.head.next = make([]*skipNode[K, V], maxLevel)
+	s.head.next = make([]*SkipNode[K, V], maxLevel)
 	s.len = 0
 	s.level = 1
 }
@@ -242,7 +277,7 @@ func (s *SkipList[K, V]) lazyInit() {
 // 2: set the value if the key does not exist
 func (s *SkipList[K, V]) set(key K, val V, mode int) bool {
 	s.lazyInit()
-	update := make([]*skipNode[K, V], maxLevel)
+	update := make([]*SkipNode[K, V], maxLevel)
 	cur := &s.head
 	// find the previous node of the target node
 	for i := s.level - 1; i >= 0; i-- {
@@ -281,10 +316,10 @@ func (s *SkipList[K, V]) set(key K, val V, mode int) bool {
 		s.level = level
 	}
 
-	node := &skipNode[K, V]{
+	node := &SkipNode[K, V]{
 		key:  key,
 		val:  val,
-		next: make([]*skipNode[K, V], level),
+		next: make([]*SkipNode[K, V], level),
 	}
 
 	for i := 0; i < level; i++ {

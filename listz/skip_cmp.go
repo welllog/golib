@@ -5,14 +5,30 @@ import (
 	"time"
 )
 
-type skipNodeCmp[K any, V any] struct {
+type SkipNodeCmp[K any, V any] struct {
 	key  K
 	val  V
-	next []*skipNodeCmp[K, V]
+	next []*SkipNodeCmp[K, V]
+}
+
+func (n *SkipNodeCmp[K, V]) Key() K {
+	return n.key
+}
+
+func (n *SkipNodeCmp[K, V]) Value() V {
+	return n.val
+}
+
+func (n *SkipNodeCmp[K, V]) SetValue(val V) {
+	n.val = val
+}
+
+func (n *SkipNodeCmp[K, V]) Next() *SkipNodeCmp[K, V] {
+	return n.next[0]
 }
 
 type SkipListWithCmp[K any, V any] struct {
-	head  skipNodeCmp[K, V]
+	head  SkipNodeCmp[K, V]
 	len   int
 	level int
 	cmp   func(K, K) int
@@ -28,7 +44,7 @@ func NewSkipListWithCmp[K any, V any](keyCmp func(K, K) int) *SkipListWithCmp[K,
 
 // Init initializes the skip list with custom comparator.
 func (s *SkipListWithCmp[K, V]) Init(keyCmp func(K, K) int) {
-	s.head.next = make([]*skipNodeCmp[K, V], maxLevel)
+	s.head.next = make([]*SkipNodeCmp[K, V], maxLevel)
 	s.len = 0
 	s.level = 1
 	s.cmp = keyCmp
@@ -57,6 +73,17 @@ func (s *SkipListWithCmp[K, V]) SetX(key K, val V) bool {
 
 // Get returns the value associated with the key.
 func (s *SkipListWithCmp[K, V]) Get(key K) (V, bool) {
+	node := s.GetNode(key)
+	if node != nil {
+		return node.val, true
+	}
+
+	var zero V
+	return zero, false
+}
+
+// GetNode returns the node associated with the key.
+func (s *SkipListWithCmp[K, V]) GetNode(key K) *SkipNodeCmp[K, V] {
 	cur := &s.head
 	// if the skip list not initialized, the level is 0, so the loop will not be executed
 	for i := s.level - 1; i >= 0; i-- {
@@ -68,20 +95,27 @@ func (s *SkipListWithCmp[K, V]) Get(key K) (V, bool) {
 			}
 
 			if n == 0 {
-				return cur.next[i].val, true
+				return next
 			}
 
 			cur = next
 		}
 	}
 
-	var zero V
-	return zero, false
+	return nil
+}
+
+// Head returns the first node of the skip list.
+func (s *SkipListWithCmp[K, V]) Head() *SkipNodeCmp[K, V] {
+	if s.len == 0 {
+		return nil
+	}
+	return s.head.next[0]
 }
 
 // Remove deletes the value associated with the key.
 func (s *SkipListWithCmp[K, V]) Remove(key K) (V, bool) {
-	update := make([]*skipNodeCmp[K, V], maxLevel)
+	update := make([]*SkipNodeCmp[K, V], maxLevel)
 	cur := &s.head
 	var curLevel int
 	// if the skip list not initialized, the level is 0, so the loop will not be executed
@@ -116,6 +150,7 @@ func (s *SkipListWithCmp[K, V]) Remove(key K) (V, bool) {
 	for i := 0; i < curLevel; i++ {
 		update[i].next[i] = cur.next[i]
 	}
+	cur.next = nil
 
 	if curLevel >= s.level {
 		for s.level > 1 && s.head.next[s.level-1] == nil {
@@ -129,7 +164,7 @@ func (s *SkipListWithCmp[K, V]) Remove(key K) (V, bool) {
 
 // Clear removes all nodes from the skip list.
 func (s *SkipListWithCmp[K, V]) Clear() {
-	s.head.next = make([]*skipNodeCmp[K, V], maxLevel)
+	s.head.next = make([]*SkipNodeCmp[K, V], maxLevel)
 	s.len = 0
 	s.level = 1
 }
@@ -227,7 +262,7 @@ func (s *SkipListWithCmp[K, V]) Values() []V {
 //	1 set the value if the key exists
 //	2 set the value if the key does not exist
 func (s *SkipListWithCmp[K, V]) set(key K, val V, mode int) bool {
-	update := make([]*skipNodeCmp[K, V], maxLevel)
+	update := make([]*SkipNodeCmp[K, V], maxLevel)
 	cur := &s.head
 	for i := s.level - 1; i >= 0; i-- {
 		for cur.next[i] != nil {
@@ -266,10 +301,10 @@ func (s *SkipListWithCmp[K, V]) set(key K, val V, mode int) bool {
 		s.level = level
 	}
 
-	node := &skipNodeCmp[K, V]{
+	node := &SkipNodeCmp[K, V]{
 		key:  key,
 		val:  val,
-		next: make([]*skipNodeCmp[K, V], level),
+		next: make([]*SkipNodeCmp[K, V], level),
 	}
 
 	for i := 0; i < level; i++ {

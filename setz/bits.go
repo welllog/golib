@@ -2,6 +2,7 @@ package setz
 
 import (
 	"fmt"
+	"math/bits"
 	"strings"
 )
 
@@ -12,17 +13,21 @@ type Bits struct {
 }
 
 // Add adds a number to the set.
-func (b *Bits) Add(num uint) {
+func (b *Bits) Add(num uint) bool {
 	if b.Bitmap.Add(num) {
 		b.length++
+		return true
 	}
+	return false
 }
 
 // Remove removes a number from the set.
-func (b *Bits) Remove(num uint) {
+func (b *Bits) Remove(num uint) bool {
 	if b.Bitmap.Remove(num) {
 		b.length--
+		return true
 	}
+	return false
 }
 
 // Len returns the length of the set.
@@ -115,6 +120,15 @@ func (b *Bitmap) Contains(num uint) bool {
 	return index < len(b.set) && (b.set[index]&(1<<bit)) != 0
 }
 
+// Len returns the length of the set.
+func (b *Bitmap) Len() int {
+	var count int
+	for _, v := range b.set {
+		count += bits.OnesCount64(v)
+	}
+	return count
+}
+
 // Cap returns the capacity of the set.
 func (b *Bitmap) Cap() int {
 	return len(b.set) << 6
@@ -123,6 +137,19 @@ func (b *Bitmap) Cap() int {
 // Iter returns a new BitsIter.
 func (b *Bitmap) Iter() BitsIter {
 	return BitsIter{bits: b}
+}
+
+// Range calls fn for each number in the set.
+func (b *Bitmap) Range(fn func(uint) bool) {
+	for i := 0; i < len(b.set); i++ {
+		for j := 0; j < 64; j++ {
+			if b.set[i]&(1<<j) != 0 {
+				if !fn(uint(i<<6 + j)) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // String returns a string representation of the set.
@@ -144,4 +171,10 @@ func (b *Bitmap) String() string {
 	}
 	buf.WriteByte('}')
 	return buf.String()
+}
+
+func (b *Bitmap) add(num uint) {
+	// num/64, num%64
+	index, bit := int(num>>6), num&63
+	b.set[index] |= 1 << bit
 }
