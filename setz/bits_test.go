@@ -109,34 +109,35 @@ func TestBits_Iter(t *testing.T) {
 	}
 	testz.Equal(t, 0, count)
 
-	m.Add(1)
-	m.Add(2)
-	m.Add(3)
-
+	for i := 1; i <= 100; i++ {
+		m.Add(uint(i))
+	}
 	iter = m.Iter()
 	count = 0
 	for iter.Next() {
 		count++
-		t.Log(iter.Value())
+		testz.Equal(t, uint(count), iter.Value())
 	}
-	testz.Equal(t, 3, count)
+	testz.Equal(t, 100, count)
+}
 
-	m.Add(128)
-	iter = m.Iter()
-	count = 0
-	for iter.Next() {
-		count++
-		t.Log(iter.Value())
-	}
-	testz.Equal(t, 4, count)
+func TestBits_Range(t *testing.T) {
+	m := Bits{}
+	m.Range(func(num uint) bool {
+		t.Error("should not be called")
+		return true
+	})
 
-	m.Add(256)
-	m.Add(999)
-	for iter.Next() {
-		count++
-		t.Log(iter.Value())
+	for i := 1; i <= 100; i++ {
+		m.Add(uint(i))
 	}
-	testz.Equal(t, 6, count)
+	count := 0
+	m.Range(func(num uint) bool {
+		count++
+		testz.Equal(t, uint(count), num)
+		return true
+	})
+	testz.Equal(t, 100, count)
 }
 
 func BenchmarkBits_Add(b *testing.B) {
