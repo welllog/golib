@@ -44,6 +44,12 @@ func (m KV[K, V]) Has(key K) bool {
 	return ok
 }
 
+// Contains returns whether the key exists.
+func (m KV[K, V]) Contains(key K) bool {
+	_, ok := m[key]
+	return ok
+}
+
 // Len returns the number of items.
 func (m KV[K, V]) Len() int {
 	return len(m)

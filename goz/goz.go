@@ -81,7 +81,24 @@ func Recover(fn func(), panicFn func(any), cleanups ...func()) {
 			}
 		}
 
-		for _, cleanup := range cleanups {
+		if len(cleanups) == 0 {
+			return
+		}
+
+		var index int
+		defer func() {
+			if p := recover(); p != nil {
+				s := fmt.Sprintf("cleanup panic: %v, index: %d", p, index)
+				if panicFn != nil {
+					panicFn(s)
+				} else {
+					fmt.Println(s)
+				}
+			}
+		}()
+
+		for i, cleanup := range cleanups {
+			index = i
 			cleanup()
 		}
 	}()

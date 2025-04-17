@@ -92,6 +92,14 @@ func (s *SafeKV[K, V]) Has(key K) bool {
 	return ok
 }
 
+// Contains returns whether the key exists
+func (s *SafeKV[K, V]) Contains(key K) bool {
+	s.mu.RLock()
+	_, ok := s.entries[key]
+	s.mu.RUnlock()
+	return ok
+}
+
 // Len returns the length of the map
 func (s *SafeKV[K, V]) Len() int {
 	s.mu.RLock()
