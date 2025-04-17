@@ -24,6 +24,14 @@ func TestRecover(t *testing.T) {
 	w.Wait()
 }
 
+func TestRecoverCleanup(t *testing.T) {
+	Recover(func() {
+		panic("main panic")
+	}, LogPanic(logger{}, 5), func() {}, func() {
+		panic("test panic")
+	})
+}
+
 func TestLimiter_Go(t *testing.T) {
 	var n int32
 

@@ -25,6 +25,12 @@ func (s Set[T]) Has(v T) bool {
 	return ok
 }
 
+// Contains reports whether v is in s.
+func (s Set[T]) Contains(v T) bool {
+	_, ok := s[v]
+	return ok
+}
+
 // Delete deletes v from s.
 func (s Set[T]) Delete(v T) (exists bool) {
 	if _, ok := s[v]; !ok {
