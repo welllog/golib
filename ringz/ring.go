@@ -81,8 +81,8 @@ func (r *Ring[T]) Peek() (T, bool) {
 	return r.values[r.head], true
 }
 
-// PushWithExpand pushes the value to queue tail and expands the ring if it is full.
-func (r *Ring[T]) PushWithExpand(value T) {
+// PushWithGrow pushes the value to queue tail and expands the ring if it is full.
+func (r *Ring[T]) PushWithGrow(value T) {
 	if r.IsFull() {
 		r.Recap(r.cap * 2)
 	}

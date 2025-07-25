@@ -1,6 +1,6 @@
 package setz
 
-// Set[T comparable] is a set of T.
+// Set is a set of T.
 type Set[T comparable] map[T]struct{}
 
 // Add adds v to s.
