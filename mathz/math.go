@@ -55,8 +55,8 @@ func Sum[T typez.Number](n ...T) T {
 }
 
 // Pow returns x**n, the base-x exponential of n.
-func Pow(x int, n uint) int {
-	var ret = 1
+func Pow[T typez.Integer](x T, n uint) T {
+	var ret T = 1
 	for n != 0 {
 		if (n & 1) != 0 { // n % 2 != 0
 			ret = ret * x
@@ -68,13 +68,13 @@ func Pow(x int, n uint) int {
 }
 
 // Abs returns the absolute value of n.
-func Abs(n int) int {
-	i := n >> (typez.WordBits - 1)
+func Abs[T typez.Signed](n T) T {
+	i := n >> (unsafe.Sizeof(n) - 1)
 	return n ^ i - i
 }
 
-// BitCount returns the number of bits that are set in n.
-func BitCount[T typez.Integer](n T) int {
+// BitOnesCount returns the number of bits that are set in n.
+func BitOnesCount[T typez.Integer](n T) int {
 	count := 0
 	for n != 0 {
 		count++
@@ -84,33 +84,83 @@ func BitCount[T typez.Integer](n T) int {
 }
 
 // IsPower2 returns true if n is a power of two.
-func IsPower2(n uint) bool {
+func IsPower2[T typez.Unsigned](n T) bool {
 	return n != 0 && (n&(n-1)) == 0
 }
 
 // IsEven returns true if n is even.
-func IsEven(n int) bool {
+func IsEven[T typez.Integer](n T) bool {
 	return 0 == (n & 1)
 }
 
 // Swap swaps the values of a and b.
-func Swap(a, b *int) {
+func Swap[T typez.Integer](a, b *T) {
 	*a ^= *b
 	*b ^= *a
 	*a ^= *b
 }
 
-// Binary returns the binary representation of n.
-func Binary(n int) string {
-	return strconv.FormatUint(uint64(*(*uint)(unsafe.Pointer(&n))), 2)
+// BinaryInt64 returns the binary representation of n.
+func BinaryInt64[T typez.Int64](n T) string {
+	// return strconv.FormatUint(uint64(*(*uint)(unsafe.Pointer(&n))), 2)
+	return strconv.FormatUint(uint64(n), 2)
 }
 
-// MaxBitApprox return the highest bit of n that is 1
-func MaxBitApprox(n int) int {
-	return 1 << uint(bits.Len(uint(n))-1)
+// BinaryFloat64 returns the binary representation of a float64 number.
+func BinaryFloat64(n float64) string {
+	return strconv.FormatUint(*(*uint64)(unsafe.Pointer(&n)), 2)
 }
 
-// MinBitApprox return the lowest bit of n that is 1
-func MinBitApprox(n int) int {
+// MaxBitApprox return the highest 1 in n
+func MaxBitApprox[T typez.Integer](n T) T {
+	return 1 << uint(bits.Len64(uint64(n))-1)
+}
+
+// MinBitApprox returns the lowest 1 in n
+func MinBitApprox[T typez.Signed](n T) T {
 	return n & (-n)
+}
+
+// EnumToBitMask converts a slice of integers (starting from 1) to a bitmask integer.
+// Caller must ensure that the integers are positive and within the range of the bitmask type.
+func EnumToBitMask[T typez.Integer](nums []T) T {
+	var mask T
+	for _, num := range nums {
+		if num > 0 {
+			mask |= 1 << (num - 1)
+		}
+	}
+	return mask
+}
+
+// BitMaskToEnum converts a bitmask integer to a slice of integers (starting from 1).
+func BitMaskToEnum[T typez.Integer](mask T) []T {
+	var nums []T
+	for i := T(0); mask > 0; i++ {
+		if mask&1 == 1 {
+			nums = append(nums, i+1)
+		}
+		mask >>= 1
+	}
+	return nums
+}
+
+// BitMaskContains checks if a bitmask contains a specific number (starting from 1).
+func BitMaskContains[T typez.Integer](mask T, num T) bool {
+	if num <= 0 {
+		return false
+	}
+	return (mask & (1 << (num - 1))) != 0
+}
+
+// BitMaskToPower2Enum converts a bitmask integer to a slice of integers that are powers of 2.
+func BitMaskToPower2Enum[T typez.Integer](mask T) []T {
+	var nums []T
+	for i := T(0); mask > 0; i++ {
+		if mask&1 == 1 {
+			nums = append(nums, 1<<i)
+		}
+		mask >>= 1
+	}
+	return nums
 }

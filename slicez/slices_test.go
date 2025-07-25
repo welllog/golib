@@ -1,6 +1,7 @@
 package slicez
 
 import (
+	"cmp"
 	"reflect"
 	"testing"
 )
@@ -1171,6 +1172,174 @@ func TestRemove(t *testing.T) {
 			}
 			if gotOk != tt.wantOk {
 				t.Errorf("Remove() gotOk = %v, want %v", gotOk, tt.wantOk)
+			}
+		})
+	}
+}
+
+func TestBinarySearch(t *testing.T) {
+	type args struct {
+		s     []int
+		value int
+	}
+	tests := []struct {
+		name   string
+		args   args
+		want   int
+		exists bool
+	}{
+		{
+			name: "Value found in the middle",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 3,
+			},
+			want:   2,
+			exists: true,
+		},
+		{
+			name: "Value found at the beginning",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 1,
+			},
+			want:   0,
+			exists: true,
+		},
+		{
+			name: "Value found at the end",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 5,
+			},
+			want:   4,
+			exists: true,
+		},
+		{
+			name: "Value not found, in end",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 6,
+			},
+			want:   5,
+			exists: false,
+		},
+		{
+			name: "Value not found, in start",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 0,
+			},
+			want:   0,
+			exists: false,
+		},
+		{
+			name: "Value not found, in middle case 1",
+			args: args{
+				s:     []int{1, 2, 3, 7, 8},
+				value: 4,
+			},
+			want:   3,
+			exists: false,
+		},
+		{
+			name: "Value not found, in middle case 2",
+			args: args{
+				s:     []int{1, 2, 3, 7, 11},
+				value: 8,
+			},
+			want:   4,
+			exists: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if index, found := BinarySearch(tt.args.s, tt.args.value); index != tt.want || found != tt.exists {
+				t.Errorf("BinarySearch() = %v %v, want %v %v", index, found, tt.want, tt.exists)
+			}
+		})
+	}
+}
+
+func TestBinarySearchFunc(t *testing.T) {
+	type args struct {
+		s     []int
+		value int
+	}
+	tests := []struct {
+		name   string
+		args   args
+		want   int
+		exists bool
+	}{
+		{
+			name: "Value found in the middle",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 3,
+			},
+			want:   2,
+			exists: true,
+		},
+		{
+			name: "Value found at the beginning",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 1,
+			},
+			want:   0,
+			exists: true,
+		},
+		{
+			name: "Value found at the end",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 5,
+			},
+			want:   4,
+			exists: true,
+		},
+		{
+			name: "Value not found, in end",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 6,
+			},
+			want:   5,
+			exists: false,
+		},
+		{
+			name: "Value not found, in start",
+			args: args{
+				s:     []int{1, 2, 3, 4, 5},
+				value: 0,
+			},
+			want:   0,
+			exists: false,
+		},
+		{
+			name: "Value not found, in middle case 1",
+			args: args{
+				s:     []int{1, 2, 3, 7, 8},
+				value: 4,
+			},
+			want:   3,
+			exists: false,
+		},
+		{
+			name: "Value not found, in middle case 2",
+			args: args{
+				s:     []int{1, 2, 3, 7, 11},
+				value: 8,
+			},
+			want:   4,
+			exists: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if index, found := BinarySearchFunc(tt.args.s, tt.args.value, cmp.Compare[int]); index != tt.want || found != tt.exists {
+				t.Errorf("BinarySearch() = %v %v, want %v %v", index, found, tt.want, tt.exists)
 			}
 		})
 	}

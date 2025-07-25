@@ -1,5 +1,7 @@
 package slicez
 
+import "github.com/welllog/golib/typez"
+
 // Diff compares slices s1 and s2, puts elements from s1 that do not exist in s2 into dst, and returns it.
 func Diff[T comparable](dst, s1, s2 []T) []T {
 	dst = dst[:0]
@@ -357,4 +359,61 @@ func Remove[T any](s []T, index int) ([]T, T, bool) {
 	}
 	s[last] = zero
 	return s[:last], v, true
+}
+
+// BinarySearch performs a binary search on a sorted slice s for the value v.
+func BinarySearch[T typez.Ordered](s []T, v T) (index int, found bool) {
+	low, high := 0, len(s)-1
+	if high < 0 {
+		return 0, false
+	}
+
+	if s[low] > v {
+		return 0, false
+	}
+
+	if s[high] < v {
+		return len(s), false
+	}
+
+	for low <= high {
+		mid := (low + high) / 2
+		if s[mid] < v {
+			low = mid + 1
+		} else if s[mid] > v {
+			high = mid - 1
+		} else {
+			return mid, true
+		}
+	}
+	return low, false
+}
+
+// BinarySearchFunc performs a binary search on a sorted slice s using a custom comparison function fn for the value v.
+func BinarySearchFunc[T, V any](s []T, v V, fn func(T, V) int) (index int, found bool) {
+	low, high := 0, len(s)-1
+	if high < 0 {
+		return 0, false
+	}
+
+	if fn(s[low], v) > 0 {
+		return 0, false
+	}
+
+	if fn(s[high], v) < 0 {
+		return len(s), false
+	}
+
+	for low <= high {
+		mid := (low + high) / 2
+		cmp := fn(s[mid], v)
+		if cmp < 0 {
+			low = mid + 1
+		} else if cmp > 0 {
+			high = mid - 1
+		} else {
+			return mid, true
+		}
+	}
+	return low, false
 }
