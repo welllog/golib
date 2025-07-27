@@ -58,10 +58,10 @@ func (l *SliceDList[T]) HasFree() bool {
 }
 
 // PushFront insert a new element at the front of the list.
-func (l *SliceDList[T]) PushFront(value T) (uint16, bool) {
+func (l *SliceDList[T]) PushFront(value T) (int, bool) {
 	idx, ok := l.allocNode()
 	if !ok {
-		return nullIdx, false
+		return int(nullIdx), false
 	}
 
 	l.nodes[idx] = sdNode[T]{
@@ -80,14 +80,14 @@ func (l *SliceDList[T]) PushFront(value T) (uint16, bool) {
 	}
 
 	l.len++
-	return idx, true
+	return int(idx), true
 }
 
 // PushBack inserts a new element at the back of the list.
-func (l *SliceDList[T]) PushBack(value T) (uint16, bool) {
+func (l *SliceDList[T]) PushBack(value T) (int, bool) {
 	idx, ok := l.allocNode()
 	if !ok {
-		return nullIdx, false
+		return int(nullIdx), false
 	}
 
 	l.nodes[idx] = sdNode[T]{
@@ -106,11 +106,11 @@ func (l *SliceDList[T]) PushBack(value T) (uint16, bool) {
 	}
 
 	l.len++
-	return idx, true
+	return int(idx), true
 }
 
 // Remove removes the element at the specified index from the list.
-func (l *SliceDList[T]) Remove(idx uint16) bool {
+func (l *SliceDList[T]) Remove(idx int) bool {
 	if !l.isLiveNode(idx) {
 		return false
 	}
@@ -132,29 +132,29 @@ func (l *SliceDList[T]) Remove(idx uint16) bool {
 	}
 
 	l.nodes[idx] = sdNode[T]{prev: nullIdx, next: l.free}
-	l.free = idx
+	l.free = uint16(idx)
 	l.len--
 	return true
 }
 
 // Front return the index and value of the first element in the list.
-func (l *SliceDList[T]) Front() (idx uint16, value T, ok bool) {
+func (l *SliceDList[T]) Front() (idx int, value T, ok bool) {
 	if l.head == nullIdx {
-		return nullIdx, value, false
+		return int(nullIdx), value, false
 	}
-	return l.head, l.nodes[l.head].value, true
+	return int(l.head), l.nodes[l.head].value, true
 }
 
 // Back return the index and value of the last element in the list.
-func (l *SliceDList[T]) Back() (idx uint16, value T, ok bool) {
+func (l *SliceDList[T]) Back() (idx int, value T, ok bool) {
 	if l.tail == nullIdx {
-		return nullIdx, value, false
+		return int(nullIdx), value, false
 	}
-	return l.tail, l.nodes[l.tail].value, true
+	return int(l.tail), l.nodes[l.tail].value, true
 }
 
 // Get returns the value at the specified index in the list.
-func (l *SliceDList[T]) Get(idx uint16) (value T, ok bool) {
+func (l *SliceDList[T]) Get(idx int) (value T, ok bool) {
 	if !l.isLiveNode(idx) {
 		return value, false
 	}
@@ -162,24 +162,24 @@ func (l *SliceDList[T]) Get(idx uint16) (value T, ok bool) {
 }
 
 // InsertAfter at the specified index `mark` inserts a new element after the node at `mark`.
-func (l *SliceDList[T]) InsertAfter(value T, mark uint16) (uint16, bool) {
+func (l *SliceDList[T]) InsertAfter(value T, mark int) (int, bool) {
 	if !l.isLiveNode(mark) {
-		return nullIdx, false
+		return int(nullIdx), false
 	}
 
-	if mark == l.tail {
+	if uint16(mark) == l.tail {
 		return l.PushBack(value)
 	}
 
 	idx, ok := l.allocNode()
 	if !ok {
-		return nullIdx, false
+		return int(nullIdx), false
 	}
 	oldNextIdx := l.nodes[mark].next
 
 	l.nodes[idx] = sdNode[T]{
 		value: value,
-		prev:  mark,
+		prev:  uint16(mark),
 		next:  oldNextIdx,
 	}
 
@@ -187,45 +187,45 @@ func (l *SliceDList[T]) InsertAfter(value T, mark uint16) (uint16, bool) {
 	l.nodes[oldNextIdx].prev = idx
 	l.len++
 
-	return idx, true
+	return int(idx), true
 }
 
 // InsertBefore at the specified index `mark` inserts a new element before the node at `mark`.
-func (l *SliceDList[T]) InsertBefore(value T, mark uint16) (uint16, bool) {
+func (l *SliceDList[T]) InsertBefore(value T, mark int) (int, bool) {
 	if !l.isLiveNode(mark) {
-		return nullIdx, false
+		return int(nullIdx), false
 	}
 
-	if mark == l.head {
+	if uint16(mark) == l.head {
 		return l.PushFront(value)
 	}
 
 	idx, ok := l.allocNode()
 	if !ok {
-		return nullIdx, false
+		return int(nullIdx), false
 	}
 	oldPrevIdx := l.nodes[mark].prev
 
 	l.nodes[idx] = sdNode[T]{
 		value: value,
 		prev:  oldPrevIdx,
-		next:  mark,
+		next:  uint16(mark),
 	}
 
 	l.nodes[mark].prev = idx
 	l.nodes[oldPrevIdx].next = idx
 	l.len++
 
-	return idx, true
+	return int(idx), true
 }
 
 // MoveToFront moves the node at the specified index to the front of the list.
-func (l *SliceDList[T]) MoveToFront(idx uint16) bool {
+func (l *SliceDList[T]) MoveToFront(idx int) bool {
 	if !l.isLiveNode(idx) {
 		return false
 	}
 
-	if l.head == idx {
+	if l.head == uint16(idx) {
 		return true // Already at the front
 	}
 
@@ -235,19 +235,19 @@ func (l *SliceDList[T]) MoveToFront(idx uint16) bool {
 	// link it to the front
 	l.nodes[idx].prev = nullIdx
 	l.nodes[idx].next = l.head
-	l.nodes[l.head].prev = idx
-	l.head = idx
+	l.nodes[l.head].prev = uint16(idx)
+	l.head = uint16(idx)
 
 	return true
 }
 
 // MoveToBack moves the node at the specified index to the back of the list.
-func (l *SliceDList[T]) MoveToBack(idx uint16) bool {
+func (l *SliceDList[T]) MoveToBack(idx int) bool {
 	if !l.isLiveNode(idx) {
 		return false
 	}
 
-	if l.tail == idx {
+	if l.tail == uint16(idx) {
 		return true
 	}
 
@@ -257,14 +257,14 @@ func (l *SliceDList[T]) MoveToBack(idx uint16) bool {
 	// link it to the back
 	l.nodes[idx].prev = l.tail
 	l.nodes[idx].next = nullIdx
-	l.nodes[l.tail].next = idx
-	l.tail = idx
+	l.nodes[l.tail].next = uint16(idx)
+	l.tail = uint16(idx)
 
 	return true
 }
 
 // MoveBefore moves the node at the specified index to before the node at the specified mark index.
-func (l *SliceDList[T]) MoveBefore(idx, mark uint16) bool {
+func (l *SliceDList[T]) MoveBefore(idx, mark int) bool {
 	if !l.isLiveNode(idx) || !l.isLiveNode(mark) {
 		return false
 	}
@@ -273,7 +273,7 @@ func (l *SliceDList[T]) MoveBefore(idx, mark uint16) bool {
 		return true
 	}
 
-	if mark == l.head {
+	if uint16(mark) == l.head {
 		return l.MoveToFront(idx)
 	}
 
@@ -283,15 +283,15 @@ func (l *SliceDList[T]) MoveBefore(idx, mark uint16) bool {
 	// insert the node before mark
 	markPrevIdx := l.nodes[mark].prev
 	l.nodes[idx].prev = markPrevIdx
-	l.nodes[idx].next = mark
-	l.nodes[markPrevIdx].next = idx
-	l.nodes[mark].prev = idx
+	l.nodes[idx].next = uint16(mark)
+	l.nodes[markPrevIdx].next = uint16(idx)
+	l.nodes[mark].prev = uint16(idx)
 
 	return true
 }
 
 // MoveAfter moves the node at the specified index to after the node at the specified mark index.
-func (l *SliceDList[T]) MoveAfter(idx, mark uint16) bool {
+func (l *SliceDList[T]) MoveAfter(idx, mark int) bool {
 	if !l.isLiveNode(idx) || !l.isLiveNode(mark) {
 		return false
 	}
@@ -300,7 +300,7 @@ func (l *SliceDList[T]) MoveAfter(idx, mark uint16) bool {
 		return true
 	}
 
-	if mark == l.tail {
+	if uint16(mark) == l.tail {
 		return l.MoveToBack(idx)
 	}
 
@@ -309,18 +309,67 @@ func (l *SliceDList[T]) MoveAfter(idx, mark uint16) bool {
 
 	// insert the node after mark
 	markNextIdx := l.nodes[mark].next
-	l.nodes[idx].prev = mark
+	l.nodes[idx].prev = uint16(mark)
 	l.nodes[idx].next = markNextIdx
-	l.nodes[markNextIdx].prev = idx
-	l.nodes[mark].next = idx
+	l.nodes[markNextIdx].prev = uint16(idx)
+	l.nodes[mark].next = uint16(idx)
 
 	return true
 }
 
-// TODO Range
+// Range iterates over the elements in the list from head to tail.
+func (l *SliceDList[T]) Range(f func(idx int, value T) bool) {
+	for curr := l.head; curr != nullIdx; {
+		node := l.nodes[curr]
+		if !f(int(curr), node.value) {
+			break
+		}
+		curr = node.next
+	}
+}
+
+// RangeFrom from the specified startIdx iterates over the elements in the list.
+func (l *SliceDList[T]) RangeFrom(startIdx int, f func(idx int, value T) bool) {
+	if !l.isLiveNode(startIdx) {
+		return
+	}
+
+	for curr := uint16(startIdx); curr != nullIdx; {
+		node := l.nodes[curr]
+		if !f(int(curr), node.value) {
+			break
+		}
+		curr = node.next
+	}
+}
+
+// RevRange iterates over the elements in the list from tail to head.
+func (l *SliceDList[T]) RevRange(f func(idx int, value T) bool) {
+	for curr := l.tail; curr != nullIdx; {
+		node := l.nodes[curr]
+		if !f(int(curr), node.value) {
+			break
+		}
+		curr = node.prev
+	}
+}
+
+// RevRangeFrom from the specified startIdx iterates over the elements in the list in reverse order.
+func (l *SliceDList[T]) RevRangeFrom(startIdx int, f func(idx int, value T) bool) {
+	if !l.isLiveNode(startIdx) {
+		return
+	}
+	for curr := uint16(startIdx); curr != nullIdx; {
+		node := l.nodes[curr]
+		if !f(int(curr), node.value) {
+			break
+		}
+		curr = node.prev
+	}
+}
 
 // unlink unlinks the node at the specified index from the list.
-func (l *SliceDList[T]) unlink(idx uint16) {
+func (l *SliceDList[T]) unlink(idx int) {
 	node := l.nodes[idx]
 	prevIdx := node.prev
 	nextIdx := node.next
@@ -375,10 +424,10 @@ func (l *SliceDList[T]) allocNode() (uint16, bool) {
 }
 
 // isLiveNode checks if the node at the given index is a live node in the list.
-func (l *SliceDList[T]) isLiveNode(idx uint16) bool {
-	if idx >= uint16(len(l.nodes)) {
+func (l *SliceDList[T]) isLiveNode(idx int) bool {
+	if idx < 0 || idx >= len(l.nodes) {
 		return false
 	}
 	// if node is head or has a previous node, it is in the list.
-	return l.head == idx || l.nodes[idx].prev != nullIdx
+	return l.head == uint16(idx) || l.nodes[idx].prev != nullIdx
 }

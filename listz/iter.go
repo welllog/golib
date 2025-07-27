@@ -55,3 +55,16 @@ func (s *SkipListWithCmp[K, V]) All() iter.Seq2[K, V] {
 		}
 	}
 }
+
+// All returns an iterator that yields all element index and value in the doubly linked list.
+func (l *SliceDList[T]) All() iter.Seq2[int, T] {
+	return func(yield func(int, T) bool) {
+		for curr := l.head; curr != nullIdx; {
+			node := l.nodes[curr]
+			if !yield(int(curr), node.value) {
+				break
+			}
+			curr = node.next
+		}
+	}
+}
