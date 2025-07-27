@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+func Assert(t *testing.T, condition bool, msgAndArgs ...any) {
+	t.Helper()
+
+	if !condition {
+		errLog(t, "assertion failed", nil, msgAndArgs)
+	}
+}
+
 func Equal(t *testing.T, expected, actual any, msgAndArgs ...any) {
 	t.Helper()
 

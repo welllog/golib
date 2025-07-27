@@ -169,7 +169,7 @@ func TestAbs(t *testing.T) {
 	}
 }
 
-func TestBitCount(t *testing.T) {
+func TestBitOnesCount(t *testing.T) {
 	testsInt64 := []struct {
 		n    int64
 		want int
@@ -185,7 +185,7 @@ func TestBitCount(t *testing.T) {
 	}
 
 	for _, tt := range testsInt64 {
-		testz.Equal(t, tt.want, BitCount(tt.n))
+		testz.Equal(t, tt.want, BitOnesCount(tt.n))
 	}
 
 	testsInt8 := []struct {
@@ -203,7 +203,7 @@ func TestBitCount(t *testing.T) {
 	}
 
 	for _, tt := range testsInt8 {
-		testz.Equal(t, tt.want, BitCount(tt.n))
+		testz.Equal(t, tt.want, BitOnesCount(tt.n))
 	}
 
 	testsInt16 := []struct {
@@ -221,7 +221,7 @@ func TestBitCount(t *testing.T) {
 	}
 
 	for _, tt := range testsInt16 {
-		testz.Equal(t, tt.want, BitCount(tt.n))
+		testz.Equal(t, tt.want, BitOnesCount(tt.n))
 	}
 
 	testsInt32 := []struct {
@@ -239,7 +239,7 @@ func TestBitCount(t *testing.T) {
 	}
 
 	for _, tt := range testsInt32 {
-		testz.Equal(t, tt.want, BitCount(tt.n))
+		testz.Equal(t, tt.want, BitOnesCount(tt.n))
 	}
 }
 
@@ -309,7 +309,7 @@ func TestSwap(t *testing.T) {
 	}
 }
 
-func TestBinary(t *testing.T) {
+func TestBinaryInt64(t *testing.T) {
 	tests := []struct {
 		n    int
 		want string
@@ -328,7 +328,29 @@ func TestBinary(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testz.Equal(t, tt.want, Binary(tt.n), tt.n)
+		testz.Equal(t, tt.want, BinaryInt64(int64(tt.n)), tt.n)
+	}
+}
+
+func TestBinaryFloat64(t *testing.T) {
+	tests := []struct {
+		n    float64
+		want string
+	}{
+		{n: 0.0, want: "0"},
+		{n: 1.0, want: "11111111110000000000000000000000000000000000000000000000000000"},
+		{n: -1.0, want: "1011111111110000000000000000000000000000000000000000000000000000"},
+		{n: 2.0, want: "100000000000000000000000000000000000000000000000000000000000000"},
+		{n: 3.0, want: "100000000001000000000000000000000000000000000000000000000000000"},
+		{n: 0.1, want: "11111110111001100110011001100110011001100110011001100110011010"},
+		{n: 0.2, want: "11111111001001100110011001100110011001100110011001100110011010"},
+		{n: 0.3, want: "11111111010011001100110011001100110011001100110011001100110011"},
+		{n: -0.1, want: "1011111110111001100110011001100110011001100110011001100110011010"},
+		{n: -0.2, want: "1011111111001001100110011001100110011001100110011001100110011010"},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.want, BinaryFloat64(tt.n), tt.n)
 	}
 }
 
@@ -381,5 +403,68 @@ func TestMinBitApprox(t *testing.T) {
 
 	for _, tt := range tests {
 		testz.Equal(t, tt.want, MinBitApprox(tt.n), tt.n)
+	}
+}
+
+func TestEnumToBitMask(t *testing.T) {
+	tests := []struct {
+		nums []int
+		want int
+	}{
+		{nums: []int{}, want: 0},
+		{nums: []int{1}, want: 1},
+		{nums: []int{2}, want: 2},
+		{nums: []int{3}, want: 4},
+		{nums: []int{4}, want: 8},
+		{nums: []int{1, 2}, want: 3},
+		{nums: []int{1, 3}, want: 5},
+		{nums: []int{2, 3}, want: 6},
+		{nums: []int{2, 4}, want: 10},
+		{nums: []int{1, 2, 3}, want: 7},
+		{nums: []int{1, 2, 3, 4}, want: 15},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.want, EnumToBitMask(tt.nums), tt.nums)
+	}
+}
+
+func TestBitMaskToEnum(t *testing.T) {
+	tests := []struct {
+		mask int
+		want []int
+	}{
+		{mask: 0, want: nil},
+		{mask: 1, want: []int{1}},
+		{mask: 2, want: []int{2}},
+		{mask: 3, want: []int{1, 2}},
+		{mask: 4, want: []int{3}},
+		{mask: 5, want: []int{1, 3}},
+		{mask: 6, want: []int{2, 3}},
+		{mask: 7, want: []int{1, 2, 3}},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.want, BitMaskToEnum(tt.mask), tt.mask)
+	}
+}
+
+func TestBitMaskToPower2Enum(t *testing.T) {
+	tests := []struct {
+		mask int
+		want []int
+	}{
+		{mask: 0, want: nil},
+		{mask: 1, want: []int{1}},
+		{mask: 2, want: []int{2}},
+		{mask: 3, want: []int{1, 2}},
+		{mask: 4, want: []int{4}},
+		{mask: 5, want: []int{1, 4}},
+		{mask: 6, want: []int{2, 4}},
+		{mask: 7, want: []int{1, 2, 4}},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.want, BitMaskToPower2Enum(tt.mask), tt.mask)
 	}
 }

@@ -1,5 +1,9 @@
 package typez
 
+type Int64 interface {
+	~int64 | ~uint64
+}
+
 type Signed interface {
 	~int | ~int64 | ~int32 | ~int16 | ~int8
 }
