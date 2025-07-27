@@ -231,8 +231,8 @@ func IndexFunc[T any](s []T, fn func(T) bool) int {
 // SubSlice returns a slice of s from start to end.
 // If end is negative, it will return all elements from start to the end of s.
 func SubSlice[T any](s []T, start int, end int) []T {
-	if start > len(s) {
-		return nil
+	if start >= len(s) {
+		return s[:0]
 	} else if start < 0 {
 		start = 0
 	}
@@ -242,7 +242,7 @@ func SubSlice[T any](s []T, start int, end int) []T {
 	}
 
 	if start >= end {
-		return nil
+		return s[:0]
 	}
 
 	return s[start:end]

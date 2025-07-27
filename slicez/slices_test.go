@@ -1023,7 +1023,7 @@ func TestSubSlice(t *testing.T) {
 				start: 6,
 				end:   8,
 			},
-			want: nil,
+			want: []int{},
 		},
 		{
 			name: "Start index less than 0",
@@ -1059,7 +1059,7 @@ func TestSubSlice(t *testing.T) {
 				start: 2,
 				end:   2,
 			},
-			want: nil,
+			want: []int{},
 		},
 		{
 			name: "Start index greater than end index",
@@ -1068,12 +1068,12 @@ func TestSubSlice(t *testing.T) {
 				start: 3,
 				end:   2,
 			},
-			want: nil,
+			want: []int{},
 		},
 		{
 			name: "Empty slice",
 			args: args{
-				s:     []int{},
+				s:     nil,
 				start: 0,
 				end:   1,
 			},
