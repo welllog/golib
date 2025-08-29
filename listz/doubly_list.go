@@ -70,7 +70,7 @@ func (l *DList[T]) Back() *DNode[T] {
 	return l.root.prev
 }
 
-// Remove removes e from l if e is an node of list l.
+// Remove removes e from l if e is a node of list l.
 // It returns the node value e.Value.
 // The node must not be nil.
 func (l *DList[T]) Remove(e *DNode[T]) T {
@@ -136,7 +136,7 @@ func (l *DList[T]) InsertNodeBefore(e, mark *DNode[T]) {
 	l.insert(e, mark.prev)
 }
 
-// InsertNodeAfter inserts a new elenodeent e after mark and returns e.
+// InsertNodeAfter inserts a new node e after mark and returns e.
 func (l *DList[T]) InsertNodeAfter(e, mark *DNode[T]) {
 	if mark.list != l {
 		return
@@ -145,7 +145,7 @@ func (l *DList[T]) InsertNodeAfter(e, mark *DNode[T]) {
 }
 
 // MoveToFront moves node e to the front of list l.
-// If e is not an node of l, the list is not modified.
+// If e is not a node of l, the list is not modified.
 // The node must not be nil.
 func (l *DList[T]) MoveToFront(e *DNode[T]) {
 	if e.list != l || l.root.next == e {
@@ -156,7 +156,7 @@ func (l *DList[T]) MoveToFront(e *DNode[T]) {
 }
 
 // MoveToBack moves node e to the back of list l.
-// If e is not an node of l, the list is not modified.
+// If e is not a node of l, the list is not modified.
 // The node must not be nil.
 func (l *DList[T]) MoveToBack(e *DNode[T]) {
 	if e.list != l || l.root.prev == e {

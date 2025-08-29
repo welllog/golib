@@ -2,6 +2,7 @@ package ctxz
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -39,7 +40,7 @@ func TestWithoutCancel3(t *testing.T) {
 	case <-time.After(20 * time.Millisecond):
 	}
 
-	if ctx1.Err() == ctx2.Err() {
+	if errors.Is(ctx1.Err(), ctx2.Err()) {
 		t.Fatal("ctx1.Err() should not equal ctx2.Err()")
 	}
 

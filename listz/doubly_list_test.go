@@ -219,7 +219,7 @@ func TestIssue4103(t *testing.T) {
 	l2.PushBack(4)
 
 	e := l1.Front()
-	l2.Remove(e) // l2 should not change because e is not an node of l2
+	l2.Remove(e) // l2 should not change because e is not a node of l2
 	if n := l2.Len(); n != 2 {
 		t.Errorf("l2.Len() = %d, want 2", n)
 	}
@@ -300,7 +300,7 @@ func TestZeroList(t *testing.T) {
 	checkDList(t, l4, []int{1})
 }
 
-// Test that a list l is not modified when calling InsertBefore with a mark that is not an node of l.
+// Test that a list l is not modified when calling InsertBefore with a mark that is not a node of l.
 func TestInsertBeforeUnknownMark(t *testing.T) {
 	var l DList[int]
 	l.PushBack(1)
@@ -310,7 +310,7 @@ func TestInsertBeforeUnknownMark(t *testing.T) {
 	checkDList(t, &l, []int{1, 2, 3})
 }
 
-// Test that a list l is not modified when calling InsertAfter with a mark that is not an node of l.
+// Test that a list l is not modified when calling InsertAfter with a mark that is not a node of l.
 func TestInsertAfterUnknownMark(t *testing.T) {
 	var l DList[int]
 	l.PushBack(1)
@@ -320,7 +320,7 @@ func TestInsertAfterUnknownMark(t *testing.T) {
 	checkDList(t, &l, []int{1, 2, 3})
 }
 
-// Test that a list l is not modified when calling MoveAfter or MoveBefore with a mark that is not an node of l.
+// Test that a list l is not modified when calling MoveAfter or MoveBefore with a mark that is not a node of l.
 func TestMoveUnknownMark(t *testing.T) {
 	var l1 DList[int]
 	e1 := l1.PushBack(1)

@@ -47,7 +47,7 @@ func (r *Reader[T]) Read(p []byte) (n int, err error) {
 func (r *Reader[T]) ReadAt(b []byte, off int64) (n int, err error) {
 	// cannot modify state - see io.ReaderAt
 	if off < 0 {
-		return 0, errors.New("reqx.Reader.ReadAt: negative offset")
+		return 0, errors.New("strz.Reader.ReadAt: negative offset")
 	}
 	if off >= int64(len(r.s)) {
 		return 0, io.EOF
@@ -69,7 +69,7 @@ func (r *Reader[T]) ReadByte() (byte, error) {
 	return b, nil
 }
 
-// UnreadByte unreads the last byte. Only the most recently read byte can be unread.
+// UnreadByte unread the last byte. Only the most recently read byte can be unread.
 func (r *Reader[T]) UnreadByte() error {
 	if r.i <= 0 {
 		return errors.New("strz.Reader.UnreadByte: at beginning of slice")
@@ -86,7 +86,7 @@ func (r *Reader[T]) WriteTo(w io.Writer) (n int64, err error) {
 	b := r.s[r.i:]
 	m, err := w.Write(UnsafeStrOrBytesToBytes(b))
 	if m > len(b) {
-		panic("reqx.Reader.WriteTo: invalid Write count")
+		panic("strz.Reader.WriteTo: invalid Write count")
 	}
 	r.i += int64(m)
 	n = int64(m)
@@ -112,10 +112,10 @@ func (r *Reader[T]) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekEnd:
 		abs = int64(len(r.s)) + offset
 	default:
-		return 0, errors.New("reqx.Reader.Seek: invalid whence")
+		return 0, errors.New("strz.Reader.Seek: invalid whence")
 	}
 	if abs < 0 {
-		return 0, errors.New("reqx.Reader.Seek: negative position")
+		return 0, errors.New("strz.Reader.Seek: negative position")
 	}
 	r.i = abs
 	return abs, nil

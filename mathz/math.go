@@ -68,8 +68,10 @@ func Pow[T typez.Integer](x T, n uint) T {
 }
 
 // Abs returns the absolute value of n.
+// Note: min int will overflow and return min int.
 func Abs[T typez.Signed](n T) T {
-	i := n >> (unsafe.Sizeof(n) - 1)
+	i := n >> ((unsafe.Sizeof(n) << 3) - 1)
+	//i := n >> 63 // go vet will complain
 	return n ^ i - i
 }
 

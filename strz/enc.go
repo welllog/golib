@@ -67,7 +67,7 @@ func Base64DecodeToString[T typez.StrOrBytes](s T, enc *base64.Encoding) (string
 	return UnsafeString(b), err
 }
 
-// IPv4ToLong converts an IPv4 address to a uint32
+// IPv4ToLong converts an IPv4 address to an uint32
 func IPv4ToLong(ip string) uint32 {
 	var long uint32
 	for _, v := range strings.Split(ip, ".") {
@@ -77,7 +77,7 @@ func IPv4ToLong(ip string) uint32 {
 	return long
 }
 
-// LongToIPv4 converts a uint32 to an IPv4 address
+// LongToIPv4 converts an uint32 to an IPv4 address
 func LongToIPv4(long uint32) string {
 	return net.IPv4(byte(long>>24), byte(long>>16), byte(long>>8), byte(long)).String()
 }
@@ -221,7 +221,7 @@ func UnicodeFormat[T typez.StrOrBytes](s T) []byte {
 	return b
 }
 
-// UnicodeParse fill dst with the bytes represented by the unicode s like \UXXXXXXXX
+// UnicodeParse fill dst with the bytes represented by the Unicode s like \UXXXXXXXX
 func UnicodeParse(dst, src []byte) int {
 	var e, f int
 	for i := 0; i < len(src); {
@@ -411,7 +411,7 @@ func UnicodeFormatToString[T typez.StrOrBytes](s T) string {
 	return UnsafeString(UnicodeFormat(s))
 }
 
-// UnicodeParseToString returns the string represented by the unicode s like \UXXXXXXXX
+// UnicodeParseToString returns the string represented by the Unicode s like \UXXXXXXXX
 func UnicodeParseToString[T typez.StrOrBytes](s T) string {
 	b := make([]byte, len(s))
 	n := UnicodeParse(b, UnsafeStrOrBytesToBytes(s))
