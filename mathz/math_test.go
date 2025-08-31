@@ -154,17 +154,87 @@ func TestPow(t *testing.T) {
 
 func TestAbs(t *testing.T) {
 	tests := []struct {
-		n    int
-		want int
+		n    int8
+		want int8
 	}{
 		{n: 0, want: 0},
 		{n: 1, want: 1},
 		{n: -1, want: 1},
 		{n: 2, want: 2},
 		{n: -2, want: 2},
+		{n: 125, want: 125},
+		{n: -125, want: 125},
+		{n: 126, want: 126},
+		{n: -126, want: 126},
+		{n: -127, want: 127},
+		{n: 127, want: 127},
+		{n: -128, want: -128}, // overflow
 	}
 
 	for _, tt := range tests {
+		testz.Equal(t, tt.want, Abs(tt.n))
+	}
+
+	tests2 := []struct {
+		n    int16
+		want int16
+	}{
+		{n: 0, want: 0},
+		{n: 1, want: 1},
+		{n: -1, want: 1},
+		{n: 2, want: 2},
+		{n: -2, want: 2},
+		{n: -32765, want: 32765},
+		{n: 32765, want: 32765},
+		{n: -32766, want: 32766},
+		{n: 32766, want: 32766},
+		{n: -32767, want: 32767},
+		{n: 32767, want: 32767},
+	}
+
+	for _, tt := range tests2 {
+		testz.Equal(t, tt.want, Abs(tt.n))
+	}
+
+	tests3 := []struct {
+		n    int32
+		want int32
+	}{
+		{n: 0, want: 0},
+		{n: 1, want: 1},
+		{n: -1, want: 1},
+		{n: 2, want: 2},
+		{n: -2, want: 2},
+		{n: -2147483647, want: 2147483647},
+		{n: 2147483647, want: 2147483647},
+		{n: -2147483646, want: 2147483646},
+		{n: 2147483646, want: 2147483646},
+		{n: -2147483645, want: 2147483645},
+		{n: 2147483645, want: 2147483645},
+	}
+
+	for _, tt := range tests3 {
+		testz.Equal(t, tt.want, Abs(tt.n))
+	}
+
+	tests4 := []struct {
+		n    int64
+		want int64
+	}{
+		{n: 0, want: 0},
+		{n: 1, want: 1},
+		{n: -1, want: 1},
+		{n: 2, want: 2},
+		{n: -2, want: 2},
+		{n: -9223372036854775807, want: 9223372036854775807},
+		{n: 9223372036854775807, want: 9223372036854775807},
+		{n: -9223372036854775806, want: 9223372036854775806},
+		{n: 9223372036854775806, want: 9223372036854775806},
+		{n: -9223372036854775805, want: 9223372036854775805},
+		{n: 9223372036854775805, want: 9223372036854775805},
+	}
+
+	for _, tt := range tests4 {
 		testz.Equal(t, tt.want, Abs(tt.n))
 	}
 }

@@ -83,14 +83,14 @@ func (s Set[T]) Merge(other Set[T]) {
 	}
 }
 
-// Diff deletes all values in s that are also in other.
+// Diff deletes all values in s that are also in the other.
 func (s Set[T]) Diff(other Set[T]) {
 	for k := range other {
 		delete(s, k)
 	}
 }
 
-// Intersect deletes all values in s that are not in other.
+// Intersect deletes all values in s that are not in the other.
 func (s Set[T]) Intersect(other Set[T]) {
 	for k := range s {
 		if _, ok := other[k]; !ok {
@@ -99,14 +99,14 @@ func (s Set[T]) Intersect(other Set[T]) {
 	}
 }
 
-// DiffWithSlice deletes all values in s that are also in other.
+// DiffWithSlice deletes all values in s that are also in the other.
 func (s Set[T]) DiffWithSlice(other []T) {
 	for _, v := range other {
 		delete(s, v)
 	}
 }
 
-// IntersectWithSlice deletes all values in s that are not in other.
+// IntersectWithSlice deletes all values in s that are not in the other.
 func (s Set[T]) IntersectWithSlice(other []T) {
 	tmp := make(Set[T], len(other))
 	tmp.AddAll(other...)
