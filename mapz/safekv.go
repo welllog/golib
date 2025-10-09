@@ -24,6 +24,24 @@ func (s *SafeKV[K, V]) Get(key K) (V, bool) {
 	return value, ok
 }
 
+// GetSet sets the value associated with the key and returns the old value and whether the key existed
+func (s *SafeKV[K, V]) GetSet(key K, value V) (V, bool) {
+	s.mu.Lock()
+	oldValue, ok := s.entries.GetSet(key, value)
+	s.mu.Unlock()
+
+	return oldValue, ok
+}
+
+// GetDel deletes the value associated with the key and returns the old value and whether the key existed
+func (s *SafeKV[K, V]) GetDel(key K) (V, bool) {
+	s.mu.Lock()
+	oldValue, ok := s.entries.GetDel(key)
+	s.mu.Unlock()
+
+	return oldValue, ok
+}
+
 // GetWithMap returns the value associated with the key and whether the key existed
 func (s *SafeKV[K, V]) GetWithMap(m map[K]V) {
 	s.mu.RLock()
@@ -51,6 +69,25 @@ func (s *SafeKV[K, V]) Set(key K, value V) {
 	s.mu.Lock()
 	s.entries[key] = value
 	s.mu.Unlock()
+}
+
+// SetIf sets the value associated with the key if the key does not exist or if fn returns true for the old value
+func (s *SafeKV[K, V]) SetIf(key K, value V, fn func(oldValue V) bool) bool {
+	s.mu.Lock()
+	ok := s.entries.SetIf(key, value, fn)
+	s.mu.Unlock()
+
+	return ok
+}
+
+// SetIfPresent sets the value associated with the key if the key exists
+func (s *SafeKV[K, V]) SetIfPresent(key K, value V) bool {
+	return s.SetX(key, value)
+}
+
+// SetIfAbsent sets the value associated with the key if the key does not exist
+func (s *SafeKV[K, V]) SetIfAbsent(key K, value V) bool {
+	return s.SetNx(key, value)
 }
 
 // SetNx sets the value associated with the key if the key does not exist
@@ -82,6 +119,20 @@ func (s *SafeKV[K, V]) Delete(keys ...K) {
 		delete(s.entries, key)
 	}
 	s.mu.Unlock()
+}
+
+// Remove deletes the value associated with the key
+func (s *SafeKV[K, V]) Remove(keys ...K) {
+	s.Delete(keys...)
+}
+
+// RemoveIf deletes the value associated with the key if fn returns true for the old value
+func (s *SafeKV[K, V]) RemoveIf(key K, fn func(value V) bool) bool {
+	s.mu.Lock()
+	ok := s.entries.RemoveIf(key, fn)
+	s.mu.Unlock()
+
+	return ok
 }
 
 // Has returns whether the key exists
