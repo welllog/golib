@@ -431,40 +431,37 @@ func Utf16ParseToString[T typez.StrOrBytes](s T) string {
 	return UnsafeString(b[:n])
 }
 
+// Base64ParseToString finds and decodes all valid base64 substrings in s
+// and replaces them with their decoded UTF-8 representation.
+// Invalid base64 substrings are left unchanged.
+// It supports standard and URL-safe base64, with or without padding.
 func Base64ParseToString[T typez.StrOrBytes](s T) string {
-	// match base64 strings, including those with padding
-	// Base64 characters: A-Z, a-z, 0-9, +, / (or - and _ for URL-safe)
-	// Padding: = (0, 1, or 2 at the end)
-	re := regexp.MustCompile(`[A-Za-z0-9+/_-]+(?:={0,2})?`)
-
 	input := UnsafeStrOrBytesToString(s)
-	return re.ReplaceAllStringFunc(input, func(match string) string {
+	return base64Reg.ReplaceAllStringFunc(input, func(match string) string {
 		var decoded []byte
 		var err error
+		var encoder *base64.Encoding
 
-		if len(match)%4 == 0 {
-			// 1. try Standard Encoding (with padding)
-			decoded, err = base64.StdEncoding.DecodeString(match)
-			if err == nil {
-				return UnsafeString(decoded)
+		if match[len(match)-1] == '=' {
+			if len(match)%4 != 0 {
+				return match
 			}
 
-			// 2. try URL Encoding (with padding)
-			decoded, err = base64.URLEncoding.DecodeString(match)
-			if err == nil {
-				return UnsafeString(decoded)
+			if strings.ContainsAny(match, "-_") {
+				encoder = base64.URLEncoding
+			} else {
+				encoder = base64.StdEncoding
+			}
+		} else {
+			if strings.ContainsAny(match, "-_") {
+				encoder = base64.RawURLEncoding
+			} else {
+				encoder = base64.RawStdEncoding
 			}
 		}
 
-		// 3. try RawStdEncoding (no padding)
-		decoded, err = base64.RawStdEncoding.DecodeString(match)
-		if err == nil {
-			return UnsafeString(decoded)
-		}
-
-		// 4. try RawURLEncoding (no padding)
-		decoded, err = base64.RawURLEncoding.DecodeString(match)
-		if err == nil {
+		decoded, err = encoder.DecodeString(match)
+		if err == nil && utf8.Valid(decoded) {
 			return UnsafeString(decoded)
 		}
 
@@ -472,6 +469,12 @@ func Base64ParseToString[T typez.StrOrBytes](s T) string {
 	})
 }
 
+// match base64 strings, including those with padding
+// Base64 characters: A-Z, a-z, 0-9, +, / (or - and _ for URL-safe)
+// Padding: = (0, 1, or 2 at the end)
+const regStr = `(?:[A-Za-z0-9+/_-]{4})*(?:[A-Za-z0-9+/_-]{2}==|[A-Za-z0-9+/_-]{3}=|[A-Za-z0-9+/_-]{2,4})`
+
+var base64Reg = regexp.MustCompile(regStr)
 var zeroPadding = []byte{'0', '0', '0', '0', '0', '0', '0', '0'}
 
 // appendUint dst size not enough will panic

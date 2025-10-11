@@ -517,6 +517,22 @@ func TestBase64ParseToString(t *testing.T) {
 			s: "ZXlKbGVIQWlPakUzTmpBeE9UYzNOVFlzSW1saGRDSTZNVGMyTURFMU1EazFOaXdpYVdRaU9pSmhaRzFwYmlKOQ==",
 			e: "eyJleHAiOjE3NjAxOTc3NTYsImlhdCI6MTc2MDE1MDk1NiwiaWQiOiJhZG1pbiJ9",
 		},
+		{
+			s: "aGVsbG8gd29ybGQ=",
+			e: "hello world",
+		},
+		{
+			s: "aGVsbG8gd29ybGQ9",
+			e: "hello world=",
+		},
+		{
+			s: "aA",
+			e: "h",
+		},
+		{
+			s: "aA==",
+			e: "h",
+		},
 	}
 
 	for _, tt := range tests {
