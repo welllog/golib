@@ -1,6 +1,7 @@
 package mathz
 
 import (
+	"math"
 	"math/bits"
 	"strconv"
 	"unsafe"
@@ -71,7 +72,7 @@ func Pow[T typez.Integer](x T, n uint) T {
 // Note: min int will overflow and return min int.
 func Abs[T typez.Signed](n T) T {
 	i := n >> ((unsafe.Sizeof(n) << 3) - 1)
-	//i := n >> 63 // go vet will complain
+	// i := n >> 63 // go vet will complain
 	return n ^ i - i
 }
 
@@ -165,4 +166,25 @@ func BitMaskToPower2Enum[T typez.Integer](mask T) []T {
 		mask >>= 1
 	}
 	return nums
+}
+
+// Haversine calculates the distance between two points on the Earth specified by latitude/longitude.
+// The result is returned in meters.
+func Haversine(lat1, lon1, lat2, lon2 float64) float64 {
+	const earthRadius = 6371000
+
+	lat1Rad := lat1 * math.Pi / 180
+	lon1Rad := lon1 * math.Pi / 180
+	lat2Rad := lat2 * math.Pi / 180
+	lon2Rad := lon2 * math.Pi / 180
+
+	dLat := lat2Rad - lat1Rad
+	dLon := lon2Rad - lon1Rad
+
+	// Haversine
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1Rad)*math.Cos(lat2Rad)*math.Sin(dLon/2)*math.Sin(dLon/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	return earthRadius * c
 }

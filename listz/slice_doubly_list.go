@@ -4,7 +4,10 @@ import (
 	"math"
 )
 
-const nullIdx uint16 = math.MaxUint16
+const (
+	maxCap  = math.MaxUint16
+	nullIdx = maxCap
+)
 
 type SliceDList[T any] struct {
 	nodes []sdNode[T]
@@ -25,8 +28,8 @@ func (l *SliceDList[T]) Init(cap int) {
 	if cap < 0 {
 		cap = 0
 	}
-	if cap > math.MaxUint16 {
-		cap = math.MaxUint16
+	if cap > maxCap {
+		cap = maxCap
 	}
 	l.nodes = make([]sdNode[T], cap)
 	l.head = nullIdx
@@ -61,7 +64,7 @@ func (l *SliceDList[T]) HasFree() bool {
 func (l *SliceDList[T]) PushFront(value T) (int, bool) {
 	idx, ok := l.allocNode()
 	if !ok {
-		return int(nullIdx), false
+		return nullIdx, false
 	}
 
 	l.nodes[idx] = sdNode[T]{
@@ -87,7 +90,7 @@ func (l *SliceDList[T]) PushFront(value T) (int, bool) {
 func (l *SliceDList[T]) PushBack(value T) (int, bool) {
 	idx, ok := l.allocNode()
 	if !ok {
-		return int(nullIdx), false
+		return nullIdx, false
 	}
 
 	l.nodes[idx] = sdNode[T]{
@@ -140,7 +143,7 @@ func (l *SliceDList[T]) Remove(idx int) bool {
 // Front return the index and value of the first element in the list.
 func (l *SliceDList[T]) Front() (idx int, value T, ok bool) {
 	if l.head == nullIdx {
-		return int(nullIdx), value, false
+		return nullIdx, value, false
 	}
 	return int(l.head), l.nodes[l.head].value, true
 }
@@ -148,7 +151,7 @@ func (l *SliceDList[T]) Front() (idx int, value T, ok bool) {
 // Back return the index and value of the last element in the list.
 func (l *SliceDList[T]) Back() (idx int, value T, ok bool) {
 	if l.tail == nullIdx {
-		return int(nullIdx), value, false
+		return nullIdx, value, false
 	}
 	return int(l.tail), l.nodes[l.tail].value, true
 }
@@ -164,7 +167,7 @@ func (l *SliceDList[T]) Get(idx int) (value T, ok bool) {
 // InsertAfter at the specified index `mark` inserts a new element after the node at `mark`.
 func (l *SliceDList[T]) InsertAfter(value T, mark int) (int, bool) {
 	if !l.isLiveNode(mark) {
-		return int(nullIdx), false
+		return nullIdx, false
 	}
 
 	if uint16(mark) == l.tail {
@@ -173,7 +176,7 @@ func (l *SliceDList[T]) InsertAfter(value T, mark int) (int, bool) {
 
 	idx, ok := l.allocNode()
 	if !ok {
-		return int(nullIdx), false
+		return nullIdx, false
 	}
 	oldNextIdx := l.nodes[mark].next
 
@@ -193,7 +196,7 @@ func (l *SliceDList[T]) InsertAfter(value T, mark int) (int, bool) {
 // InsertBefore at the specified index `mark` inserts a new element before the node at `mark`.
 func (l *SliceDList[T]) InsertBefore(value T, mark int) (int, bool) {
 	if !l.isLiveNode(mark) {
-		return int(nullIdx), false
+		return nullIdx, false
 	}
 
 	if uint16(mark) == l.head {
@@ -202,7 +205,7 @@ func (l *SliceDList[T]) InsertBefore(value T, mark int) (int, bool) {
 
 	idx, ok := l.allocNode()
 	if !ok {
-		return int(nullIdx), false
+		return nullIdx, false
 	}
 	oldPrevIdx := l.nodes[mark].prev
 
@@ -394,7 +397,7 @@ func (l *SliceDList[T]) allocNode() (uint16, bool) {
 		l.free = l.nodes[idx].next
 		return idx, true
 	}
-	if len(l.nodes) >= math.MaxUint16 {
+	if len(l.nodes) >= maxCap {
 		return nullIdx, false
 	}
 
@@ -405,8 +408,8 @@ func (l *SliceDList[T]) allocNode() (uint16, bool) {
 	//idx := uint16(len(l.nodes))
 	//l.nodes = append(l.nodes, sdNode[T]{})
 	//if capacity := cap(l.nodes); capacity > len(l.nodes) {
-	//	if capacity > math.MaxUint16 {
-	//		capacity = math.MaxUint16
+	//	if capacity > maxCap {
+	//		capacity = maxCap
 	//	}
 	//
 	//	l.nodes = l.nodes[:capacity]

@@ -31,5 +31,8 @@ func WithoutCancel(ctx context.Context) (valueOnlyContext context.Context) {
 	if ctx == nil {
 		panic("cannot create context from nil parent")
 	}
+	if ctx == context.Background() {
+		return ctx
+	}
 	return noCancelContext{ctx}
 }

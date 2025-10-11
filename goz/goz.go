@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+const (
+	defaultLimit     = 3
+	defaultStackDeep = 32
+)
+
 type Limiter struct {
 	c            chan struct{}
 	w            sync.WaitGroup
@@ -17,7 +22,7 @@ type Limiter struct {
 
 func NewLimiter(limit int) *Limiter {
 	if limit < 1 {
-		limit = 3
+		limit = defaultLimit
 	}
 	return &Limiter{
 		c: make(chan struct{}, limit),
@@ -75,7 +80,7 @@ func Recover(fn func(), panicFn func(any), cleanups ...func()) {
 				buf.Grow(200)
 
 				buf.WriteString(fmt.Sprintf("panic: %v  Traceback:", p))
-				stack(&buf, 4, 6)
+				stack(&buf, 4, defaultStackDeep)
 
 				fmt.Println(buf.String())
 			}

@@ -8,22 +8,54 @@ func (m KV[K, V]) Get(key K) (V, bool) {
 	return value, ok
 }
 
+// GetSet sets the value associated with the key and returns the old value and whether the key existed or not.
+func (m KV[K, V]) GetSet(key K, value V) (V, bool) {
+	oldValue, ok := m[key]
+	m[key] = value
+	return oldValue, ok
+}
+
+// GetDel deletes the value associated with the key and returns the old value and whether the key existed or not.
+func (m KV[K, V]) GetDel(key K) (V, bool) {
+	oldValue, ok := m[key]
+	if ok {
+		delete(m, key)
+	}
+	return oldValue, ok
+}
+
+// GetOrSet returns the value associated with the key if it exists.
+// Otherwise, it sets the value associated with the key to the provided value and returns that value.
+func (m KV[K, V]) GetOrSet(key K, value V) (actual V, got bool) {
+	actual, got = m[key]
+	if !got {
+		m[key] = value
+		actual = value
+	}
+	return
+}
+
 // Set sets the value associated with the key.
 func (m KV[K, V]) Set(key K, value V) {
 	m[key] = value
 }
 
-// SetNx sets the value associated with the key if the key does not exist.
-func (m KV[K, V]) SetNx(key K, value V) bool {
-	_, ok := m[key]
-	if !ok {
-		m[key] = value
+// SetIf sets the value associated with the key if the key does not exist or if fn returns true for the old value.
+func (m KV[K, V]) SetIf(key K, value V, fn func(oldValue V) bool) bool {
+	oldValue, ok := m[key]
+	if ok {
+		if fn(oldValue) {
+			m[key] = value
+			return true
+		}
+		return false
 	}
-	return !ok
+	m[key] = value
+	return true
 }
 
-// SetX sets the value associated with the key if the key exists.
-func (m KV[K, V]) SetX(key K, value V) bool {
+// SetIfPresent sets the value associated with the key if the key exists.
+func (m KV[K, V]) SetIfPresent(key K, value V) bool {
 	_, ok := m[key]
 	if ok {
 		m[key] = value
@@ -31,17 +63,57 @@ func (m KV[K, V]) SetX(key K, value V) bool {
 	return ok
 }
 
+// SetIfAbsent sets the value associated with the key if the key does not exist.
+func (m KV[K, V]) SetIfAbsent(key K, value V) bool {
+	_, ok := m[key]
+	if !ok {
+		m[key] = value
+	}
+	return !ok
+}
+
+// SetNx sets the value associated with the key if the key does not exist.
+// This is an alias for SetIfAbsent.
+func (m KV[K, V]) SetNx(key K, value V) bool {
+	return m.SetIfAbsent(key, value)
+}
+
+// SetX sets the value associated with the key if the key exists.
+// This is an alias for SetIfPresent.
+func (m KV[K, V]) SetX(key K, value V) bool {
+	return m.SetIfPresent(key, value)
+}
+
 // Delete deletes the value associated with the key.
+// This is an alias for Remove.
 func (m KV[K, V]) Delete(keys ...K) {
+	m.Remove(keys...)
+}
+
+// Remove deletes the value associated with the key.
+func (m KV[K, V]) Remove(keys ...K) {
 	for _, key := range keys {
 		delete(m, key)
 	}
 }
 
+// RemoveIf deletes the value associated with the key if fn returns true for the old value.
+func (m KV[K, V]) RemoveIf(key K, fn func(oldValue V) bool) bool {
+	oldValue, ok := m[key]
+	if ok {
+		if fn(oldValue) {
+			delete(m, key)
+			return true
+		}
+		return false
+	}
+	return false
+}
+
 // Has returns whether the key exists.
+// This is an alias for Contains.
 func (m KV[K, V]) Has(key K) bool {
-	_, ok := m[key]
-	return ok
+	return m.Contains(key)
 }
 
 // Contains returns whether the key exists.
