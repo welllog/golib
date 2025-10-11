@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -428,6 +429,47 @@ func Utf16ParseToString[T typez.StrOrBytes](s T) string {
 	b := make([]byte, len(s))
 	n := Utf16Parse(b, UnsafeStrOrBytesToBytes(s))
 	return UnsafeString(b[:n])
+}
+
+func Base64ParseToString[T typez.StrOrBytes](s T) string {
+	// match base64 strings, including those with padding
+	// Base64 characters: A-Z, a-z, 0-9, +, / (or - and _ for URL-safe)
+	// Padding: = (0, 1, or 2 at the end)
+	re := regexp.MustCompile(`[A-Za-z0-9+/_-]+(?:={0,2})?`)
+
+	input := UnsafeStrOrBytesToString(s)
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		var decoded []byte
+		var err error
+
+		if len(match)%4 == 0 {
+			// 1. try Standard Encoding (with padding)
+			decoded, err = base64.StdEncoding.DecodeString(match)
+			if err == nil {
+				return UnsafeString(decoded)
+			}
+
+			// 2. try URL Encoding (with padding)
+			decoded, err = base64.URLEncoding.DecodeString(match)
+			if err == nil {
+				return UnsafeString(decoded)
+			}
+		}
+
+		// 3. try RawStdEncoding (no padding)
+		decoded, err = base64.RawStdEncoding.DecodeString(match)
+		if err == nil {
+			return UnsafeString(decoded)
+		}
+
+		// 4. try RawURLEncoding (no padding)
+		decoded, err = base64.RawURLEncoding.DecodeString(match)
+		if err == nil {
+			return UnsafeString(decoded)
+		}
+
+		return match
+	})
 }
 
 var zeroPadding = []byte{'0', '0', '0', '0', '0', '0', '0', '0'}

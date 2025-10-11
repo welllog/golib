@@ -491,3 +491,35 @@ func TestLower(t *testing.T) {
 		}
 	}
 }
+
+func TestBase64ParseToString(t *testing.T) {
+	tests := []struct {
+		s string
+		e string
+	}{
+		{
+			s: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NjAxOTc3NTYsImlhdCI6MTc2MDE1MDk1NiwiaWQiOiJhZG1pbiJ9.hello",
+			e: `{"alg":"HS256","typ":"JWT"}.{"exp":1760197756,"iat":1760150956,"id":"admin"}.hello`,
+		},
+		{
+			s: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+			e: `{"alg":"HS256","typ":"JWT"}`,
+		},
+		{
+			s: "eyJleHAiOjE3NjAxOTc3NTYsImlhdCI6MTc2MDE1MDk1NiwiaWQiOiJhZG1pbiJ9",
+			e: `{"exp":1760197756,"iat":1760150956,"id":"admin"}`,
+		},
+		{
+			s: "hello",
+			e: `hello`,
+		},
+		{
+			s: "ZXlKbGVIQWlPakUzTmpBeE9UYzNOVFlzSW1saGRDSTZNVGMyTURFMU1EazFOaXdpYVdRaU9pSmhaRzFwYmlKOQ==",
+			e: "eyJleHAiOjE3NjAxOTc3NTYsImlhdCI6MTc2MDE1MDk1NiwiaWQiOiJhZG1pbiJ9",
+		},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.e, Base64ParseToString(tt.s))
+	}
+}
