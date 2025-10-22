@@ -42,16 +42,19 @@ func (l *Limiter) Go(fn func()) *Limiter {
 	return l
 }
 
+func (l *Limiter) Done() <-chan struct{} {
+	quit := make(chan struct{})
+	go func(ch chan<- struct{}) {
+		l.w.Wait()
+		close(ch)
+	}(quit)
+	return quit
+}
+
 func (l *Limiter) Wait(waitTime ...time.Duration) {
 	if len(waitTime) > 0 {
-		quit := make(chan struct{}, 1)
-		go func(ch chan<- struct{}) {
-			l.w.Wait()
-			ch <- struct{}{}
-		}(quit)
-
 		select {
-		case <-quit:
+		case <-l.Done():
 		case <-time.After(waitTime[0]):
 		}
 		return
@@ -77,7 +80,7 @@ func Recover(fn func(), panicFn func(any), cleanups ...func()) {
 				panicFn(p)
 			} else {
 				var buf strings.Builder
-				buf.Grow(200)
+				buf.Grow(1024)
 
 				buf.WriteString(fmt.Sprintf("panic: %v  Traceback:", p))
 				stack(&buf, 4, defaultStackDeep)
@@ -134,7 +137,7 @@ type Logger interface {
 func LogPanic(l Logger, deep int) func(any) {
 	return func(a any) {
 		var buf strings.Builder
-		buf.Grow(200)
+		buf.Grow(512)
 
 		buf.WriteString(fmt.Sprintf("panic: %v  Traceback:", a))
 		stack(&buf, 5, deep)
