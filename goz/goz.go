@@ -44,7 +44,7 @@ func (l *Limiter) Go(fn func()) *Limiter {
 
 func (l *Limiter) Done() <-chan struct{} {
 	quit := make(chan struct{})
-	go func(ch chan struct{}) {
+	go func(ch chan<- struct{}) {
 		l.w.Wait()
 		close(ch)
 	}(quit)
