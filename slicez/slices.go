@@ -493,7 +493,8 @@ func FilterInPlace[T any](s []T, predicate func(T) bool) []T {
 	return s[:remain]
 }
 
-// Equal compares slices s1 and s2, and returns true if they are equal.
+// Equal compares slices s1 and s2 element-wise and returns true if they have the same length
+// and all corresponding elements are equal.
 func Equal[T comparable](s1, s2 []T) bool {
 	if len(s1) != len(s2) {
 		return false
