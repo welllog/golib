@@ -1,1346 +1,1570 @@
 package slicez
 
 import (
-	"cmp"
-	"reflect"
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 	"testing"
+
+	"github.com/welllog/golib/testz"
 )
 
 func TestDiff(t *testing.T) {
-	type args struct {
-		s1 []int
-		s2 []int
-	}
-	tests := []struct {
-		name string
-		args args
+	var dst []int
+	testCases := []struct {
+		s1   []int
+		s2   []int
 		want []int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s1: []int{1, 2, 3, 4, 5},
-				s2: []int{3, 4, 5, 6, 7},
-			},
-			want: []int{1, 2},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{3},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{4, 5, 6},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{4, 5, 6},
 			want: []int{1, 2, 3},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{1, 2, 3},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 3},
 			want: []int{},
 		},
 		{
-			name: "Test case 4",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{},
 			want: []int{1, 2, 3},
 		},
 		{
-			name: "Test case 5",
-			args: args{
-				s1: []int{},
-				s2: []int{2, 3},
-			},
+			s1:   []int{},
+			s2:   []int{1, 2, 3},
 			want: []int{},
 		},
 		{
-			name: "Test case 6",
-			args: args{
-				s1: []int{},
-				s2: []int{},
-			},
+			s1:   []int{},
+			s2:   []int{},
 			want: []int{},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 4},
+			want: []int{2, 3},
+		},
+		{
+			s1:   []int{1, 2, 3, 4, 5, 6},
+			s2:   []int{1, 2, 3, 4, 7},
+			want: []int{5, 6},
+		},
+		{
+			s1:   []int{1, 2, 2, 3, 4, 4, 5, 5},
+			s2:   []int{1, 3, 5},
+			want: []int{2, 2, 4, 4},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var dst []int
-			if got := Diff(dst, tt.args.s1, tt.args.s2); !Equal(got, tt.want) {
-				t.Errorf("Diff() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s1=%v,s2=%v", tc.s1, tc.s2), func(t *testing.T) {
+			got := Diff(dst, tc.s1, tc.s2)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestDiffInPlaceFirst(t *testing.T) {
-	type args struct {
-		s1 []int
-		s2 []int
-	}
-	tests := []struct {
-		name string
-		args args
+	testCases := []struct {
+		s1   []int
+		s2   []int
 		want []int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s1: []int{1, 2, 3, 4, 5},
-				s2: []int{3, 4, 5, 6, 7},
-			},
-			want: []int{1, 2},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{3},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{4, 5, 6},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{4, 5, 6},
 			want: []int{1, 2, 3},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{1, 2, 3},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 3},
 			want: []int{},
 		},
 		{
-			name: "Test case 4",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{},
 			want: []int{1, 2, 3},
 		},
 		{
-			name: "Test case 5",
-			args: args{
-				s1: []int{},
-				s2: []int{2, 3},
-			},
+			s1:   []int{},
+			s2:   []int{1, 2, 3},
 			want: []int{},
 		},
 		{
-			name: "Test case 6",
-			args: args{
-				s1: []int{},
-				s2: []int{},
-			},
+			s1:   []int{},
+			s2:   []int{},
 			want: []int{},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 4},
+			want: []int{2, 3},
+		},
+		{
+			s1:   []int{1, 2, 3, 4, 5, 6},
+			s2:   []int{1, 2, 3, 4, 7},
+			want: []int{5, 6},
+		},
+		{
+			s1:   []int{1, 2, 2, 3, 4, 4, 5, 5},
+			s2:   []int{1, 3, 5},
+			want: []int{2, 2, 4, 4},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := DiffInPlaceFirst(tt.args.s1, tt.args.s2); !Equal(got, tt.want) {
-				t.Errorf("DiffReuse() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s1=%v,s2=%v", tc.s1, tc.s2), func(t *testing.T) {
+			s1 := Copy(tc.s1, 0, -1)
+			got := DiffInPlaceFirst(s1, tc.s2)
+			sort.Ints(got)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestDiffSorted(t *testing.T) {
+	var dst []int
+	testCases := []struct {
+		s1   []int
+		s2   []int
+		want []int
+	}{
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{3},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{4, 5, 6},
+			want: []int{1, 2, 3},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 3},
+			want: []int{},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{},
+			want: []int{1, 2, 3},
+		},
+		{
+			s1:   []int{},
+			s2:   []int{1, 2, 3},
+			want: []int{},
+		},
+		{
+			s1:   []int{},
+			s2:   []int{},
+			want: []int{},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 4},
+			want: []int{2, 3},
+		},
+		{
+			s1:   []int{1, 2, 3, 5},
+			s2:   []int{2, 4, 5, 6},
+			want: []int{1, 3},
+		},
+		{
+			s1:   []int{1, 2, 3, 4, 5, 6},
+			s2:   []int{1, 2, 3, 4, 7},
+			want: []int{5, 6},
+		},
+		{
+			s1:   []int{1, 2, 2, 3, 4, 4, 5, 5},
+			s2:   []int{1, 3, 5},
+			want: []int{2, 2, 4, 4},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s1=%v,s2=%v", tc.s1, tc.s2), func(t *testing.T) {
+			got := DiffSorted(dst, tc.s1, tc.s2)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestDiffSortedInPlaceFirst(t *testing.T) {
+	testCases := []struct {
+		s1   []int
+		s2   []int
+		want []int
+	}{
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{3},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{4, 5, 6},
+			want: []int{1, 2, 3},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 3},
+			want: []int{},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{},
+			want: []int{1, 2, 3},
+		},
+		{
+			s1:   []int{},
+			s2:   []int{1, 2, 3},
+			want: []int{},
+		},
+		{
+			s1:   []int{},
+			s2:   []int{},
+			want: []int{},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 4},
+			want: []int{2, 3},
+		},
+		{
+			s1:   []int{1, 2, 3, 5},
+			s2:   []int{2, 4, 5, 6},
+			want: []int{1, 3},
+		},
+		{
+			s1:   []int{1, 2, 3, 4, 5, 6},
+			s2:   []int{1, 2, 3, 4, 7},
+			want: []int{5, 6},
+		},
+		{
+			s1:   []int{1, 2, 2, 3, 4, 4, 5, 5},
+			s2:   []int{1, 3, 5},
+			want: []int{2, 2, 4, 4},
+		},
+		{
+			s1:   []int{1, 3, 5, 7, 9, 10},
+			s2:   []int{3, 7},
+			want: []int{1, 5, 9, 10},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s1=%v,s2=%v", tc.s1, tc.s2), func(t *testing.T) {
+			s1 := Copy(tc.s1, 0, -1)
+			got := DiffSortedInPlaceFirst(s1, tc.s2)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestIntersect(t *testing.T) {
-	type args struct {
-		s1 []int
-		s2 []int
-	}
-	tests := []struct {
-		name string
-		args args
+	var dst []int
+	testCases := []struct {
+		s1   []int
+		s2   []int
 		want []int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s1: []int{1, 2, 3, 4, 5},
-				s2: []int{3, 4, 5, 6, 7},
-			},
-			want: []int{3, 4, 5},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{1, 2},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{4, 5, 6},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{4, 5, 6},
 			want: []int{},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{1, 2, 3},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 3},
 			want: []int{1, 2, 3},
 		},
 		{
-			name: "Test case 4",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{},
 			want: []int{},
 		},
 		{
-			name: "test case 5",
-			args: args{
-				s1: []int{},
-				s2: []int{1, 2, 3},
-			},
+			s1:   []int{},
+			s2:   []int{1, 2, 3},
 			want: []int{},
 		},
 		{
-			name: "test case 6",
-			args: args{
-				s1: []int{},
-				s2: []int{},
-			},
+			s1:   []int{},
+			s2:   []int{},
 			want: []int{},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 4},
+			want: []int{1, 1},
+		},
+		{
+			s1:   []int{1, 2, 3, 4, 5, 6},
+			s2:   []int{1, 2, 3, 4, 7},
+			want: []int{1, 2, 3, 4},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{1, 1, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 2, 4},
+			want: []int{1, 1, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 1, 2, 4},
+			want: []int{1, 1, 2},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var dst []int
-			if got := Intersect(dst, tt.args.s1, tt.args.s2); !Equal(got, tt.want) {
-				t.Errorf("Intersect() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s1=%v,s2=%v", tc.s1, tc.s2), func(t *testing.T) {
+			got := Intersect(dst, tc.s1, tc.s2)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestIntersectSortedMultiset(t *testing.T) {
+	var dst []int
+	testCases := []struct {
+		s1   []int
+		s2   []int
+		want []int
+	}{
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{1, 2},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{4, 5, 6},
+			want: []int{},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 3},
+			want: []int{1, 2, 3},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{},
+			want: []int{},
+		},
+		{
+			s1:   []int{},
+			s2:   []int{1, 2, 3},
+			want: []int{},
+		},
+		{
+			s1:   []int{},
+			s2:   []int{},
+			want: []int{},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 4},
+			want: []int{1},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 4},
+			want: []int{1, 1},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 1, 4},
+			want: []int{1, 1},
+		},
+		{
+			s1:   []int{1, 2, 3, 5},
+			s2:   []int{2, 4, 5, 6},
+			want: []int{2, 5},
+		},
+		{
+			s1:   []int{1, 2, 3, 4, 5, 6},
+			s2:   []int{1, 2, 3, 4, 7},
+			want: []int{1, 2, 3, 4},
+		},
+		{
+			s1:   []int{1, 2, 2, 3},
+			s2:   []int{2, 2, 2, 4},
+			want: []int{2, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 2},
+			s2:   []int{1, 2, 2, 2},
+			want: []int{1, 2, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{1, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 2, 4},
+			want: []int{1, 1, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 1, 2, 4},
+			want: []int{1, 1, 2},
+		},
+		{
+			s1:   []int{1, 2, 2, 3},
+			s2:   []int{2, 2, 2, 4},
+			want: []int{2, 2},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s1=%v,s2=%v", tc.s1, tc.s2), func(t *testing.T) {
+			got := IntersectSortedMultiset(dst, tc.s1, tc.s2)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestIntersectSortedSet(t *testing.T) {
+	var dst []int
+	testCases := []struct {
+		s1   []int
+		s2   []int
+		want []int
+	}{
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{1, 2},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{4, 5, 6},
+			want: []int{},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 3},
+			want: []int{1, 2, 3},
+		},
+		{
+			s1:   []int{1, 2, 3},
+			s2:   []int{},
+			want: []int{},
+		},
+		{
+			s1:   []int{},
+			s2:   []int{1, 2, 3},
+			want: []int{},
+		},
+		{
+			s1:   []int{},
+			s2:   []int{},
+			want: []int{},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 4},
+			want: []int{1},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 4},
+			want: []int{1},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 1, 4},
+			want: []int{1},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 1, 2, 4},
+			want: []int{1, 2},
+		},
+		{
+			s1:   []int{1, 2, 3, 4, 5, 6},
+			s2:   []int{1, 2, 3, 4, 7},
+			want: []int{1, 2, 3, 4},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{1, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 2, 4},
+			want: []int{1, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 1, 2, 4},
+			want: []int{1, 2},
+		},
+		{
+			s1:   []int{1, 2, 2, 3},
+			s2:   []int{2, 2, 2, 4},
+			want: []int{2},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s1=%v,s2=%v", tc.s1, tc.s2), func(t *testing.T) {
+			got := IntersectSortedSet(dst, tc.s1, tc.s2)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestIntersectInPlaceFirst(t *testing.T) {
-	type args struct {
-		s1 []int
-		s2 []int
-	}
-	tests := []struct {
-		name string
-		args args
+	testCases := []struct {
+		s1   []int
+		s2   []int
 		want []int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s1: []int{1, 2, 3, 4, 5},
-				s2: []int{3, 4, 5, 6, 7},
-			},
-			want: []int{3, 4, 5},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{1, 2},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{4, 5, 6},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{4, 5, 6},
 			want: []int{},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{1, 2, 3},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 3},
 			want: []int{1, 2, 3},
 		},
 		{
-			name: "Test case 4",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{},
 			want: []int{},
 		},
 		{
-			name: "test case 5",
-			args: args{
-				s1: []int{},
-				s2: []int{1, 2, 3},
-			},
+			s1:   []int{},
+			s2:   []int{1, 2, 3},
 			want: []int{},
 		},
 		{
-			name: "test case 6",
-			args: args{
-				s1: []int{},
-				s2: []int{},
-			},
+			s1:   []int{},
+			s2:   []int{},
 			want: []int{},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 4},
+			want: []int{1, 1},
+		},
+		{
+			s1:   []int{1, 2, 3, 4, 5, 6},
+			s2:   []int{1, 2, 3, 4, 7},
+			want: []int{1, 2, 3, 4},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 2, 4},
+			want: []int{1, 1, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 2, 4},
+			want: []int{1, 1, 2},
+		},
+		{
+			s1:   []int{1, 1, 2, 3},
+			s2:   []int{1, 1, 1, 2, 4},
+			want: []int{1, 1, 2},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IntersectInPlaceFirst(tt.args.s1, tt.args.s2); !Equal(got, tt.want) {
-				t.Errorf("Intersect() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s1=%v,s2=%v", tc.s1, tc.s2), func(t *testing.T) {
+			s1 := Copy(tc.s1, 0, -1)
+			got := IntersectInPlaceFirst(s1, tc.s2)
+			sort.Ints(got)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestUnique(t *testing.T) {
-	type args struct {
-		s []int
-	}
-	tests := []struct {
-		name string
-		args args
+	var dst []int
+	testCases := []struct {
+		s    []int
 		want []int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 2, 3, 3, 3, 4, 4, 4, 4},
-			},
-			want: []int{1, 2, 3, 4},
+			s:    []int{1, 2, 3, 2, 1},
+			want: []int{1, 2, 3},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 1, 1, 1},
-			},
+			s:    []int{1, 2, 3, 4, 5, 1, 2},
+			want: []int{1, 2, 3, 4, 5},
+		},
+		{
+			s:    []int{1, 2, 3},
+			want: []int{1, 2, 3},
+		},
+		{
+			s:    []int{1, 1, 1},
 			want: []int{1},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s: []int{},
-			},
+			s:    []int{},
 			want: []int{},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var dst []int
-			if got := Unique(dst, tt.args.s); !Equal(got, tt.want) {
-				t.Errorf("Unique() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			got := Unique(dst, tc.s)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestUniqueSorted(t *testing.T) {
+	var dst []int
+	testCases := []struct {
+		s    []int
+		want []int
+	}{
+		{
+			s:    []int{1, 1, 2, 2, 3},
+			want: []int{1, 2, 3},
+		},
+		{
+			s:    []int{1, 2, 3},
+			want: []int{1, 2, 3},
+		},
+		{
+			s:    []int{1, 1, 1},
+			want: []int{1},
+		},
+		{
+			s:    []int{},
+			want: []int{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			got := UniqueSorted(dst, tc.s)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestUniqueInPlace(t *testing.T) {
-	type args struct {
-		s []int
-	}
-	tests := []struct {
-		name string
-		args args
+	testCases := []struct {
+		s    []int
 		want []int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 2, 3, 3, 3, 4, 4, 4, 4},
-			},
-			want: []int{1, 2, 3, 4},
+			s:    []int{1, 2, 3, 2, 1},
+			want: []int{1, 2, 3},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 1, 1, 1},
-			},
+			s:    []int{1, 2, 3, 4, 5, 1, 2},
+			want: []int{1, 2, 3, 4, 5},
+		},
+		{
+			s:    []int{1, 2, 3},
+			want: []int{1, 2, 3},
+		},
+		{
+			s:    []int{1, 1, 1},
 			want: []int{1},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s: []int{},
-			},
+			s:    []int{},
 			want: []int{},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := UniqueInPlace(tt.args.s); !Equal(got, tt.want) {
-				t.Errorf("UniqueInPlace() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			s := Copy(tc.s, 0, -1)
+			got := UniqueInPlace(s)
+			sort.Ints(got)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
-func TestUniqueFunc(t *testing.T) {
-	type args struct {
-		s []int
-	}
-	tests := []struct {
-		name string
-		args args
+func TestUniqueInPlaceSorted(t *testing.T) {
+	testCases := []struct {
+		s    []int
 		want []int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 2, 3, 3, 3, 4, 4, 4, 4},
-			},
-			want: []int{1, 2, 3, 4},
+			s:    []int{1, 1, 2, 2, 3},
+			want: []int{1, 2, 3},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 1, 1, 1},
-			},
+			s:    []int{1, 2, 3},
+			want: []int{1, 2, 3},
+		},
+		{
+			s:    []int{1, 1, 1},
 			want: []int{1},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s: []int{},
-			},
+			s:    []int{},
 			want: []int{},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var dst []int
-			if got := UniqueByKey(dst, tt.args.s, func(n int) int {
-				return 2 * n
-			}); !Equal(got, tt.want) {
-				t.Errorf("Unique() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			s := Copy(tc.s, 0, -1)
+			got := UniqueInPlaceSorted(s)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
-func TestUniqueFuncInPlace(t *testing.T) {
-	type args struct {
-		s []int
-	}
-	tests := []struct {
-		name string
-		args args
-		want []int
+type uniqueObject struct {
+	id   int
+	name string
+}
+
+func TestUniqueByKey(t *testing.T) {
+	var dst []uniqueObject
+	testCases := []struct {
+		s    []uniqueObject
+		key  func(uniqueObject) int
+		want []uniqueObject
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 2, 3, 3, 3, 4, 4, 4, 4},
+			s: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+				{1, "c"},
 			},
-			want: []int{1, 2, 3, 4},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+			},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 1, 1, 1},
+			s: []uniqueObject{
+				{1, "a"}, {2, "b"}, {3, "c"}, {4, "d"}, {5, "e"}, {1, "f"},
 			},
-			want: []int{1},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"}, {2, "b"}, {3, "c"}, {4, "d"}, {5, "e"},
+			},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s: []int{},
+			s: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+				{1, "c"},
 			},
-			want: []int{},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+			},
+		},
+		{
+			s: []uniqueObject{
+				{1, "a"}, {2, "b"}, {3, "c"}, {4, "d"}, {5, "e"}, {1, "f"},
+			},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"}, {2, "b"}, {3, "c"}, {4, "d"}, {5, "e"},
+			},
+		},
+		{
+			s: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+				{1, "c"},
+			},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := UniqueByKeyInPlace(tt.args.s, func(n int) int {
-				return 2 * n
-			}); !Equal(got, tt.want) {
-				t.Errorf("UniqueInPlace() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			got := UniqueByKey(dst, tc.s, tc.key)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestUniqueByKeyInPlace(t *testing.T) {
+	testCases := []struct {
+		s    []uniqueObject
+		key  func(uniqueObject) int
+		want []uniqueObject
+	}{
+		{
+			s: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+				{1, "c"},
+			},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+			},
+		},
+		{
+			s: []uniqueObject{
+				{1, "a"}, {2, "b"}, {3, "c"}, {4, "d"}, {5, "e"}, {1, "f"},
+			},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"}, {2, "b"}, {3, "c"}, {4, "d"}, {5, "e"},
+			},
+		},
+		{
+			s: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+				{1, "c"},
+			},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+			},
+		},
+		{
+			s: []uniqueObject{
+				{1, "a"}, {2, "b"}, {3, "c"}, {4, "d"}, {5, "e"}, {1, "f"},
+			},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"}, {2, "b"}, {3, "c"}, {4, "d"}, {5, "e"},
+			},
+		},
+		{
+			s: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+				{1, "c"},
+			},
+			key: func(o uniqueObject) int {
+				return o.id
+			},
+			want: []uniqueObject{
+				{1, "a"},
+				{2, "b"},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			s := Copy(tc.s, 0, -1)
+			got := UniqueByKeyInPlace(s, tc.key)
+			sort.Slice(got, func(i, j int) bool {
+				return got[i].id < got[j].id
+			})
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestFilter(t *testing.T) {
-	type args struct {
-		s         []int
-		predicate func(int) bool
-	}
-	tests := []struct {
-		name string
-		args args
+	var dst []int
+	testCases := []struct {
+		s    []int
+		f    func(int) bool
 		want []int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 3, 4, 5},
-				predicate: func(i int) bool {
-					return i%2 == 0
-				},
-			},
+			s:    []int{1, 2, 3, 4, 5},
+			f:    func(i int) bool { return i%2 == 0 },
 			want: []int{2, 4},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 2, 3},
-				predicate: func(i int) bool {
-					return i > 3
-				},
-			},
+			s:    []int{1, 2, 3, 4, 5},
+			f:    func(i int) bool { return i > 5 },
 			want: []int{},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s: []int{1, 2, 3},
-				predicate: func(i int) bool {
-					return i > 0
-				},
-			},
-			want: []int{1, 2, 3},
+			s:    []int{},
+			f:    func(i int) bool { return i > 0 },
+			want: []int{},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var dst []int
-			if got := Filter(dst, tt.args.s, tt.args.predicate); !Equal(got, tt.want) {
-				t.Errorf("Filter() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			got := Filter(dst, tc.s, tc.f)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestFilterInPlace(t *testing.T) {
-	type args struct {
-		s         []int
-		predicate func(int) bool
-	}
-	tests := []struct {
-		name string
-		args args
+	testCases := []struct {
+		s    []int
+		f    func(int) bool
 		want []int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 3, 4, 5},
-				predicate: func(i int) bool {
-					return i%2 == 0
-				},
-			},
+			s:    []int{1, 2, 3, 4, 5},
+			f:    func(i int) bool { return i%2 == 0 },
 			want: []int{2, 4},
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 2, 3},
-				predicate: func(i int) bool {
-					return i > 3
-				},
-			},
+			s:    []int{1, 2, 3, 4, 5},
+			f:    func(i int) bool { return i > 5 },
 			want: []int{},
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s: []int{1, 2, 3},
-				predicate: func(i int) bool {
-					return i > 0
-				},
-			},
-			want: []int{1, 2, 3},
+			s:    []int{},
+			f:    func(i int) bool { return i > 0 },
+			want: []int{},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := FilterInPlace(tt.args.s, tt.args.predicate); !Equal(got, tt.want) {
-				t.Errorf("FilterInPlace() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			s := Copy(tc.s, 0, -1)
+			got := FilterInPlace(s, tc.f)
+			sort.Ints(got)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestEqual(t *testing.T) {
-	type args struct {
-		s1 []int
-		s2 []int
-	}
-	tests := []struct {
-		name string
-		args args
+	testCases := []struct {
+		s1   []int
+		s2   []int
 		want bool
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{1, 2, 3},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 3},
 			want: true,
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s1: []int{1, 2, 3},
-				s2: []int{3, 2, 1},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2, 4},
 			want: false,
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s1: []int{},
-				s2: []int{},
-			},
+			s1:   []int{1, 2, 3},
+			s2:   []int{1, 2},
+			want: false,
+		},
+		{
+			s1:   []int{},
+			s2:   []int{},
 			want: true,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Equal(tt.args.s1, tt.args.s2); got != tt.want {
-				t.Errorf("Equal() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s1=%v,s2=%v", tc.s1, tc.s2), func(t *testing.T) {
+			got := Equal(tc.s1, tc.s2)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestIndex(t *testing.T) {
-	type args struct {
-		s []int
-		v int
-	}
-	tests := []struct {
-		name string
-		args args
+	testCases := []struct {
+		s    []int
+		v    int
 		want int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 3},
-				v: 2,
-			},
+			s:    []int{1, 2, 3},
+			v:    2,
 			want: 1,
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 2, 3},
-				v: 4,
-			},
+			s:    []int{1, 2, 3},
+			v:    4,
 			want: -1,
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s: []int{},
-				v: 1,
-			},
+			s:    []int{},
+			v:    1,
 			want: -1,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Index(tt.args.s, tt.args.v); got != tt.want {
-				t.Errorf("Index() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v,v=%d", tc.s, tc.v), func(t *testing.T) {
+			got := Index(tc.s, tc.v)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestIndexFunc(t *testing.T) {
-	type args struct {
-		s []int
-		v int
-	}
-	tests := []struct {
-		name string
-		args args
+	testCases := []struct {
+		s    []int
+		f    func(int) bool
 		want int
 	}{
 		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 3},
-				v: 2,
-			},
+			s:    []int{1, 2, 3},
+			f:    func(i int) bool { return i == 2 },
 			want: 1,
 		},
 		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 2, 3},
-				v: 4,
-			},
+			s:    []int{1, 2, 3},
+			f:    func(i int) bool { return i == 4 },
 			want: -1,
 		},
 		{
-			name: "Test case 3",
-			args: args{
-				s: []int{},
-				v: 1,
-			},
+			s:    []int{},
+			f:    func(i int) bool { return i == 1 },
 			want: -1,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IndexFunc(tt.args.s, func(n int) bool {
-				return n == tt.args.v
-			}); got != tt.want {
-				t.Errorf("Index() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
-func TestContains(t *testing.T) {
-	type args struct {
-		s []int
-		v int
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 3},
-				v: 2,
-			},
-			want: true,
-		},
-		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 2, 3},
-				v: 4,
-			},
-			want: false,
-		},
-		{
-			name: "Test case 3",
-			args: args{
-				s: []int{},
-				v: 1,
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Contains(tt.args.s, tt.args.v); got != tt.want {
-				t.Errorf("Contains() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestContainsFunc(t *testing.T) {
-	type args struct {
-		s []int
-		v int
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "Test case 1",
-			args: args{
-				s: []int{1, 2, 3},
-				v: 2,
-			},
-			want: true,
-		},
-		{
-			name: "Test case 2",
-			args: args{
-				s: []int{1, 2, 3},
-				v: 4,
-			},
-			want: false,
-		},
-		{
-			name: "Test case 3",
-			args: args{
-				s: []int{},
-				v: 1,
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := ContainsFunc(tt.args.s, func(n int) bool {
-				return n == tt.args.v
-			}); got != tt.want {
-				t.Errorf("Contains() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestChunk(t *testing.T) {
-	tests := []struct {
-		name      string
-		s         interface{}
-		chunkSize int
-		want      interface{}
-	}{
-		{
-			name:      "empty slice",
-			s:         []int{},
-			chunkSize: 2,
-			want:      [][]int{},
-		},
-		{
-			name:      "slice smaller than chunk size",
-			s:         []int{1, 2},
-			chunkSize: 3,
-			want:      [][]int{{1, 2}},
-		},
-		{
-			name:      "slice equal to chunk size",
-			s:         []int{1, 2, 3},
-			chunkSize: 3,
-			want:      [][]int{{1, 2, 3}},
-		},
-		{
-			name:      "slice larger than chunk size",
-			s:         []int{1, 2, 3, 4, 5},
-			chunkSize: 2,
-			want:      [][]int{{1, 2}, {3, 4}, {5}},
-		},
-		{
-			name:      "slice length not a multiple of chunk size",
-			s:         []int{1, 2, 3, 4, 5},
-			chunkSize: 3,
-			want:      [][]int{{1, 2, 3}, {4, 5}},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := Chunk(tt.s.([]int), tt.chunkSize)
-			if len(tt.s.([]int)) == 0 {
-				if len(got) > 0 {
-					t.Errorf("Chunk() = %v, want %v", got, tt.want)
-				}
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want.([][]int)) {
-				t.Errorf("Chunk() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestChunkProcess(t *testing.T) {
-	tests := []struct {
-		args   []int
-		chunk  int
-		expect [][]int
-	}{
-		{
-			[]int{1, 2, 3, 4, 5, 6},
-			2,
-			[][]int{{1, 2}, {3, 4}, {5, 6}},
-		},
-		{
-			[]int{1, 2, 3, 4, 5, 6},
-			3,
-			[][]int{{1, 2, 3}, {4, 5, 6}},
-		},
-		{
-			[]int{1, 2, 3, 4, 5, 6},
-			4,
-			[][]int{{1, 2, 3, 4}, {5, 6}},
-		},
-		{
-			[]int{1, 2, 3, 4, 5, 6},
-			6,
-			[][]int{{1, 2, 3, 4, 5, 6}},
-		},
-		{
-			[]int{1, 2, 3, 4, 5, 6},
-			7,
-			[][]int{{1, 2, 3, 4, 5, 6}},
-		},
-		{
-			[]int{},
-			1,
-			[][]int{{}},
-		},
-	}
-
-	for _, tt := range tests {
-		var i int
-		_ = ChunkProcess(tt.args, tt.chunk, func(arr []int) error {
-			if !reflect.DeepEqual(arr, tt.expect[i]) {
-				t.Errorf("Chunk = %v, want %v", arr, tt.expect[i])
-			}
-			i++
-			return nil
-		})
-	}
-}
-
-func TestCopy(t *testing.T) {
-	type args[T any] struct {
-		arr    []T
-		start  int
-		length int
-	}
-	type testCase[T any] struct {
-		name string
-		args args[T]
-		want []T
-	}
-	tests := []testCase[int]{
-		{
-			name: "case 1",
-			args: args[int]{
-				arr:    []int{1, 2, 3},
-				start:  0,
-				length: -2,
-			},
-			want: []int{1, 2, 3},
-		},
-		{
-			name: "case 2",
-			args: args[int]{
-				arr:    []int{1, 2, 3},
-				start:  3,
-				length: 2,
-			},
-			want: []int{},
-		},
-		{
-			name: "case 3",
-			args: args[int]{
-				arr:    []int{1, 2, 3},
-				start:  1,
-				length: 3,
-			},
-			want: []int{2, 3},
-		},
-		{
-			name: "case 4",
-			args: args[int]{
-				arr:    []int{1, 2, 3},
-				start:  1,
-				length: 2,
-			},
-			want: []int{2, 3},
-		},
-		{
-			name: "case 5",
-			args: args[int]{
-				arr:    []int{},
-				start:  1,
-				length: 2,
-			},
-			want: []int{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := Copy(tt.args.arr, tt.args.start, tt.args.length)
-			if !Equal(got, tt.want) {
-				t.Errorf("Clone() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestValues(t *testing.T) {
-	type args struct {
-		fn func(int) int
-		ss [][]int
-	}
-	tests := []struct {
-		name string
-		args args
-		want []int
-	}{
-		{
-			name: "Values with multiple slices",
-			args: args{
-				fn: func(i int) int { return i * 2 },
-				ss: [][]int{{1, 2, 3}, {4, 5, 6}},
-			},
-			want: []int{2, 4, 6, 8, 10, 12},
-		},
-		{
-			name: "Values with single slice",
-			args: args{
-				fn: func(i int) int { return i * 2 },
-				ss: [][]int{{1, 2, 3}},
-			},
-			want: []int{2, 4, 6},
-		},
-		{
-			name: "Values with empty slice",
-			args: args{
-				fn: func(i int) int { return i * 2 },
-				ss: [][]int{{}},
-			},
-			want: []int{},
-		},
-		{
-			name: "Values with no slices",
-			args: args{
-				fn: func(i int) int { return i * 2 },
-				ss: [][]int{},
-			},
-			want: []int{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Values(tt.args.fn, tt.args.ss...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Values() = %v, want %v", got, tt.want)
-			}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			got := IndexFunc(tc.s, tc.f)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestSubSlice(t *testing.T) {
-	type args struct {
+	testCases := []struct {
 		s     []int
 		start int
 		end   int
-	}
-	tests := []struct {
-		name string
-		args args
-		want []int
+		want  []int
 	}{
 		{
-			name: "Normal case",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				start: 1,
-				end:   3,
-			},
-			want: []int{2, 3},
+			s:     []int{1, 2, 3, 4, 5},
+			start: 1,
+			end:   3,
+			want:  []int{2, 3},
 		},
 		{
-			name: "Start index greater than length",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				start: 6,
-				end:   8,
-			},
-			want: []int{},
+			s:     []int{1, 2, 3, 4, 5},
+			start: 3,
+			end:   -1,
+			want:  []int{4, 5},
 		},
 		{
-			name: "Start index less than 0",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				start: -1,
-				end:   3,
-			},
-			want: []int{1, 2, 3},
+			s:     []int{1, 2, 3, 4, 5},
+			start: 5,
+			end:   -1,
+			want:  []int{},
 		},
 		{
-			name: "End index less than 0",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				start: 1,
-				end:   -1,
-			},
-			want: []int{2, 3, 4, 5},
+			s:     []int{1, 2, 3, 4, 5},
+			start: -1,
+			end:   3,
+			want:  []int{1, 2, 3},
 		},
 		{
-			name: "End index greater than length",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				start: 1,
-				end:   10,
-			},
-			want: []int{2, 3, 4, 5},
+			s:     []int{1, 2, 3, 4, 5},
+			start: 3,
+			end:   1,
+			want:  []int{},
 		},
 		{
-			name: "Start index equal to end index",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				start: 2,
-				end:   2,
-			},
-			want: []int{},
+			s:     []int{1, 2, 3, 4, 5},
+			start: -2,
+			end:   -1,
+			want:  []int{1, 2, 3, 4, 5},
 		},
 		{
-			name: "Start index greater than end index",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				start: 3,
-				end:   2,
-			},
-			want: []int{},
-		},
-		{
-			name: "Empty slice",
-			args: args{
-				s:     nil,
-				start: 0,
-				end:   1,
-			},
-			want: nil,
+			s:     []int{},
+			start: 0,
+			end:   -1,
+			want:  []int{},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := SubSlice(tt.args.s, tt.args.start, tt.args.end); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SubSlice() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v,start=%d,end=%d", tc.s, tc.start, tc.end), func(t *testing.T) {
+			got := SubSlice(tc.s, tc.start, tc.end)
+			testz.Equal(t, tc.want, got)
 		})
 	}
 }
-func TestRemove(t *testing.T) {
-	type args struct {
-		s     []int
-		index int
-	}
-	tests := []struct {
-		name      string
-		args      args
-		wantSlice []int
-		wantElem  int
-		wantOk    bool
+
+func TestContains(t *testing.T) {
+	testCases := []struct {
+		s    []int
+		v    int
+		want bool
 	}{
 		{
-			name: "Remove element at index 0",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				index: 0,
-			},
-			wantSlice: []int{2, 3, 4, 5},
-			wantElem:  1,
-			wantOk:    true,
+			s:    []int{1, 2, 3},
+			v:    2,
+			want: true,
 		},
 		{
-			name: "Remove element at index 2",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				index: 2,
-			},
-			wantSlice: []int{1, 2, 4, 5},
-			wantElem:  3,
-			wantOk:    true,
+			s:    []int{1, 2, 3},
+			v:    4,
+			want: false,
 		},
 		{
-			name: "Remove element at last index",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				index: 4,
-			},
-			wantSlice: []int{1, 2, 3, 4},
-			wantElem:  5,
-			wantOk:    true,
-		},
-		{
-			name: "Remove element from empty slice",
-			args: args{
-				s:     []int{},
-				index: 0,
-			},
-			wantSlice: []int{},
-			wantElem:  0,
-			wantOk:    false,
-		},
-		{
-			name: "Remove element with negative index",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				index: -1,
-			},
-			wantSlice: []int{1, 2, 3, 4, 5},
-			wantElem:  0,
-			wantOk:    false,
-		},
-		{
-			name: "Remove element with out of range index",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				index: 5,
-			},
-			wantSlice: []int{1, 2, 3, 4, 5},
-			wantElem:  0,
-			wantOk:    false,
+			s:    []int{},
+			v:    1,
+			want: false,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotSlice, gotElem, gotOk := Remove(tt.args.s, tt.args.index)
-			if !reflect.DeepEqual(gotSlice, tt.wantSlice) {
-				t.Errorf("Remove() gotSlice = %v, want %v", gotSlice, tt.wantSlice)
-			}
-			if gotElem != tt.wantElem {
-				t.Errorf("Remove() gotElem = %v, want %v", gotElem, tt.wantElem)
-			}
-			if gotOk != tt.wantOk {
-				t.Errorf("Remove() gotOk = %v, want %v", gotOk, tt.wantOk)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v,v=%d", tc.s, tc.v), func(t *testing.T) {
+			got := Contains(tc.s, tc.v)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestContainsFunc(t *testing.T) {
+	testCases := []struct {
+		s    []int
+		f    func(int) bool
+		want bool
+	}{
+		{
+			s:    []int{1, 2, 3},
+			f:    func(i int) bool { return i == 2 },
+			want: true,
+		},
+		{
+			s:    []int{1, 2, 3},
+			f:    func(i int) bool { return i == 4 },
+			want: false,
+		},
+		{
+			s:    []int{},
+			f:    func(i int) bool { return i == 1 },
+			want: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v", tc.s), func(t *testing.T) {
+			got := ContainsFunc(tc.s, tc.f)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestChunk(t *testing.T) {
+	testCases := []struct {
+		s         []int
+		chunkSize int
+		want      [][]int
+	}{
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: 2,
+			want:      [][]int{{1, 2}, {3, 4}, {5}},
+		},
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: 5,
+			want:      [][]int{{1, 2, 3, 4, 5}},
+		},
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: 6,
+			want:      [][]int{{1, 2, 3, 4, 5}},
+		},
+		{
+			s:         []int{},
+			chunkSize: 2,
+			want:      nil,
+		},
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: 0,
+			want:      [][]int{{1, 2, 3, 4, 5}},
+		},
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: -1,
+			want:      [][]int{{1, 2, 3, 4, 5}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v,chunkSize=%d", tc.s, tc.chunkSize), func(t *testing.T) {
+			got := Chunk(tc.s, tc.chunkSize)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestChunkProcess(t *testing.T) {
+	testCases := []struct {
+		s         []int
+		chunkSize int
+		want      string
+	}{
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: 2,
+			want:      "[1 2][3 4][5]",
+		},
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: 5,
+			want:      "[1 2 3 4 5]",
+		},
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: 6,
+			want:      "[1 2 3 4 5]",
+		},
+		{
+			s:         []int{},
+			chunkSize: 2,
+			want:      "",
+		},
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: 0,
+			want:      "[1 2 3 4 5]",
+		},
+		{
+			s:         []int{1, 2, 3, 4, 5},
+			chunkSize: -1,
+			want:      "[1 2 3 4 5]",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v,chunkSize=%d", tc.s, tc.chunkSize), func(t *testing.T) {
+			var builder strings.Builder
+			err := ChunkProcess(tc.s, tc.chunkSize, func(chunk []int) error {
+				builder.WriteString(fmt.Sprintf("%v", chunk))
+				return nil
+			})
+			testz.Nil(t, err)
+			testz.Equal(t, tc.want, builder.String())
+		})
+	}
+}
+
+func TestCopy(t *testing.T) {
+	testCases := []struct {
+		s      []int
+		start  int
+		length int
+		want   []int
+	}{
+		{
+			s:      []int{1, 2, 3, 4, 5},
+			start:  1,
+			length: 3,
+			want:   []int{2, 3, 4},
+		},
+		{
+			s:      []int{1, 2, 3, 4, 5},
+			start:  3,
+			length: -1,
+			want:   []int{4, 5},
+		},
+		{
+			s:      []int{1, 2, 3, 4, 5},
+			start:  5,
+			length: -1,
+			want:   nil,
+		},
+		{
+			s:      []int{1, 2, 3, 4, 5},
+			start:  -1,
+			length: 3,
+			want:   []int{1, 2, 3},
+		},
+		{
+			s:      []int{1, 2, 3, 4, 5},
+			start:  3,
+			length: 0,
+			want:   nil,
+		},
+		{
+			s:      []int{1, 2, 3, 4, 5},
+			start:  1,
+			length: 10,
+			want:   []int{2, 3, 4, 5},
+		},
+		{
+			s:      []int{},
+			start:  0,
+			length: -1,
+			want:   nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v,start=%d,length=%d", tc.s, tc.start, tc.length), func(t *testing.T) {
+			got := Copy(tc.s, tc.start, tc.length)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestValues(t *testing.T) {
+	testCases := []struct {
+		ss   [][]int
+		fn   func(int) string
+		want []string
+	}{
+		{
+			ss:   [][]int{{1, 2}, {3, 4, 5}},
+			fn:   strconv.Itoa,
+			want: []string{"1", "2", "3", "4", "5"},
+		},
+		{
+			ss:   [][]int{{}},
+			fn:   strconv.Itoa,
+			want: []string{},
+		},
+		{
+			ss:   [][]int{},
+			fn:   strconv.Itoa,
+			want: []string{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("ss=%v", tc.ss), func(t *testing.T) {
+			got := Values(tc.fn, tc.ss...)
+			testz.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestRemove(t *testing.T) {
+	testCases := []struct {
+		s     []int
+		index int
+		wantS []int
+		wantV int
+		wantB bool
+	}{
+		{
+			s:     []int{1, 2, 3},
+			index: 1,
+			wantS: []int{1, 3},
+			wantV: 2,
+			wantB: true,
+		},
+		{
+			s:     []int{1, 2, 3},
+			index: 0,
+			wantS: []int{2, 3},
+			wantV: 1,
+			wantB: true,
+		},
+		{
+			s:     []int{1, 2, 3},
+			index: 2,
+			wantS: []int{1, 2},
+			wantV: 3,
+			wantB: true,
+		},
+		{
+			s:     []int{1, 2, 3},
+			index: 3,
+			wantS: []int{1, 2, 3},
+			wantV: 0,
+			wantB: false,
+		},
+		{
+			s:     []int{1, 2, 3},
+			index: -1,
+			wantS: []int{1, 2, 3},
+			wantV: 0,
+			wantB: false,
+		},
+		{
+			s:     []int{},
+			index: 0,
+			wantS: []int{},
+			wantV: 0,
+			wantB: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v,index=%d", tc.s, tc.index), func(t *testing.T) {
+			s := Copy(tc.s, 0, -1)
+			gotS, gotV, gotB := Remove(s, tc.index)
+			testz.Equal(t, tc.wantS, gotS)
+			testz.Equal(t, tc.wantV, gotV)
+			testz.Equal(t, tc.wantB, gotB)
 		})
 	}
 }
 
 func TestBinarySearch(t *testing.T) {
-	type args struct {
+	testCases := []struct {
 		s     []int
-		value int
-	}
-	tests := []struct {
-		name   string
-		args   args
-		want   int
-		exists bool
+		v     int
+		wantI int
+		wantF bool
 	}{
 		{
-			name: "Value found in the middle",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 3,
-			},
-			want:   2,
-			exists: true,
+			s:     []int{1, 2, 3, 4, 5},
+			v:     3,
+			wantI: 2,
+			wantF: true,
 		},
 		{
-			name: "Value found at the beginning",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 1,
-			},
-			want:   0,
-			exists: true,
+			s:     []int{1, 2, 4, 5},
+			v:     3,
+			wantI: 2,
+			wantF: false,
 		},
 		{
-			name: "Value found at the end",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 5,
-			},
-			want:   4,
-			exists: true,
+			s:     []int{1, 2, 3, 4, 5},
+			v:     0,
+			wantI: 0,
+			wantF: false,
 		},
 		{
-			name: "Value not found, in end",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 6,
-			},
-			want:   5,
-			exists: false,
+			s:     []int{1, 2, 3, 4, 5},
+			v:     6,
+			wantI: 5,
+			wantF: false,
 		},
 		{
-			name: "Value not found, in start",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 0,
-			},
-			want:   0,
-			exists: false,
+			s:     []int{},
+			v:     1,
+			wantI: 0,
+			wantF: false,
 		},
 		{
-			name: "Value not found, in middle case 1",
-			args: args{
-				s:     []int{1, 2, 3, 7, 8},
-				value: 4,
-			},
-			want:   3,
-			exists: false,
-		},
-		{
-			name: "Value not found, in middle case 2",
-			args: args{
-				s:     []int{1, 2, 3, 7, 11},
-				value: 8,
-			},
-			want:   4,
-			exists: false,
+			s:     []int{1, 3, 5},
+			v:     2,
+			wantI: 1,
+			wantF: false,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if index, found := BinarySearch(tt.args.s, tt.args.value); index != tt.want || found != tt.exists {
-				t.Errorf("BinarySearch() = %v %v, want %v %v", index, found, tt.want, tt.exists)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v,v=%d", tc.s, tc.v), func(t *testing.T) {
+			gotI, gotF := BinarySearch(tc.s, tc.v)
+			testz.Equal(t, tc.wantI, gotI)
+			testz.Equal(t, tc.wantF, gotF)
 		})
 	}
 }
 
 func TestBinarySearchFunc(t *testing.T) {
-	type args struct {
+	testCases := []struct {
 		s     []int
-		value int
-	}
-	tests := []struct {
-		name   string
-		args   args
-		want   int
-		exists bool
+		v     int
+		fn    func(int, int) int
+		wantI int
+		wantF bool
 	}{
 		{
-			name: "Value found in the middle",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 3,
-			},
-			want:   2,
-			exists: true,
+			s:     []int{1, 2, 3, 4, 5},
+			v:     3,
+			fn:    func(a, b int) int { return a - b },
+			wantI: 2,
+			wantF: true,
 		},
 		{
-			name: "Value found at the beginning",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 1,
-			},
-			want:   0,
-			exists: true,
+			s:     []int{1, 2, 4, 5},
+			v:     3,
+			fn:    func(a, b int) int { return a - b },
+			wantI: 2,
+			wantF: false,
 		},
 		{
-			name: "Value found at the end",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 5,
-			},
-			want:   4,
-			exists: true,
+			s:     []int{1, 2, 3, 4, 5},
+			v:     0,
+			fn:    func(a, b int) int { return a - b },
+			wantI: 0,
+			wantF: false,
 		},
 		{
-			name: "Value not found, in end",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 6,
-			},
-			want:   5,
-			exists: false,
+			s:     []int{1, 2, 3, 4, 5},
+			v:     6,
+			fn:    func(a, b int) int { return a - b },
+			wantI: 5,
+			wantF: false,
 		},
 		{
-			name: "Value not found, in start",
-			args: args{
-				s:     []int{1, 2, 3, 4, 5},
-				value: 0,
-			},
-			want:   0,
-			exists: false,
+			s:     []int{},
+			v:     1,
+			fn:    func(a, b int) int { return a - b },
+			wantI: 0,
+			wantF: false,
 		},
 		{
-			name: "Value not found, in middle case 1",
-			args: args{
-				s:     []int{1, 2, 3, 7, 8},
-				value: 4,
-			},
-			want:   3,
-			exists: false,
-		},
-		{
-			name: "Value not found, in middle case 2",
-			args: args{
-				s:     []int{1, 2, 3, 7, 11},
-				value: 8,
-			},
-			want:   4,
-			exists: false,
+			s:     []int{1, 3, 5},
+			v:     2,
+			fn:    func(a, b int) int { return a - b },
+			wantI: 1,
+			wantF: false,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if index, found := BinarySearchFunc(tt.args.s, tt.args.value, cmp.Compare[int]); index != tt.want || found != tt.exists {
-				t.Errorf("BinarySearch() = %v %v, want %v %v", index, found, tt.want, tt.exists)
-			}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("s=%v,v=%d", tc.s, tc.v), func(t *testing.T) {
+			gotI, gotF := BinarySearchFunc(tc.s, tc.v, tc.fn)
+			testz.Equal(t, tc.wantI, gotI)
+			testz.Equal(t, tc.wantF, gotF)
 		})
 	}
 }
