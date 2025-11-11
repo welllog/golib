@@ -20,8 +20,15 @@ type Limiter struct {
 	panicHandler func(any)
 }
 
+// NewLimiter creates a new Limiter with the specified limit of concurrent goroutines.
+// if limit is 0, it defaults to 3.
+// if limit is less than 0, it means no limit.
 func NewLimiter(limit int) *Limiter {
-	if limit < 1 {
+	if limit < 0 {
+		return &Limiter{}
+	}
+
+	if limit == 0 {
 		limit = defaultLimit
 	}
 	return &Limiter{
@@ -35,10 +42,14 @@ func (l *Limiter) SetPanicHandler(fn func(any)) *Limiter {
 }
 
 func (l *Limiter) Go(fn func()) *Limiter {
+	if l.c == nil {
+		l.w.Add(1)
+		go Recover(fn, l.panicHandler, l.w.Done)
+		return l
+	}
+
 	l.add()
-
 	go Recover(fn, l.panicHandler, l.done)
-
 	return l
 }
 

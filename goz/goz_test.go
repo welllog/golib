@@ -69,6 +69,58 @@ func TestLimiter_Go(t *testing.T) {
 	}
 }
 
+func TestLimiter_NoLimit(t *testing.T) {
+	begin := time.Now()
+	NewLimiter(-1).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Wait()
+
+	elapsed := time.Since(begin).Milliseconds()
+	if elapsed >= 30 {
+		t.Fatalf("no limit limiter should finish in less than 30ms, took %dms", elapsed)
+	}
+}
+
+func TestLimiter_ZeroLimit(t *testing.T) {
+	begin := time.Now()
+	NewLimiter(0).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Go(func() {
+		time.Sleep(20 * time.Millisecond)
+	}).Wait()
+
+	elapsed := time.Since(begin).Milliseconds()
+	if elapsed < 60 { // zero mean default limit 3, so at least 3 batches
+		t.Fatalf("zero limit limiter should finish in more than 60ms, took %dms", elapsed)
+	}
+}
+
 func TestLimiter_Go2(t *testing.T) {
 	limiter := NewLimiter(0)
 	limiter.Go(func() {
