@@ -314,6 +314,8 @@ func ToString(value any) string {
 		return strconv.FormatFloat(v, 'f', -1, 64)
 	case bool:
 		return strconv.FormatBool(v)
+	case fmt.Stringer:
+		return v.String()
 	default:
 		return fmt.Sprintf("%+v", value)
 	}

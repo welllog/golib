@@ -90,3 +90,24 @@ func TestAESGCMDecrypt(t *testing.T) {
 		t.Fatalf("AESGCMDecrypt(%s) != %s", string(enc[:AESGCMDecryptLen(enc)]), str)
 	}
 }
+
+func TestAESCTREncryptDecrypt(t *testing.T) {
+	key := []byte("0123456789abcdef")
+	iv := []byte("abcdef9876543210")
+
+	str := "hello world"
+	text := []byte(str)
+	err := AESCTREncrypt(text, text, key, iv)
+	if err != nil {
+		t.Fatalf("AESCTREncrypt error: %s", err)
+	}
+
+	err = AESCTRDecrypt(text, text, key, iv)
+	if err != nil {
+		t.Fatalf("AESCTRDecrypt error: %s", err)
+	}
+
+	if string(text) != str {
+		t.Fatalf("AESCTRDecrypt(%s) != %s", string(text), str)
+	}
+}

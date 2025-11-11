@@ -57,6 +57,16 @@ func AESCBCDecryptLen[T typez.StrOrBytes](cipherText T) int {
 	return len(cipherText)
 }
 
+// AESCTREncryptLen returns the length of the encrypted data
+func AESCTREncryptLen[T typez.StrOrBytes](plainText T) int {
+	return len(plainText)
+}
+
+// AESCTRDecryptLen returns the length of the decrypted data
+func AESCTRDecryptLen[T typez.StrOrBytes](cipherText T) int {
+	return len(cipherText)
+}
+
 // AESGCMEncryptLen returns the length of the encrypted data
 func AESGCMEncryptLen[T typez.StrOrBytes](plainText T) int {
 	return len(plainText) + gcmTagSize
@@ -87,10 +97,10 @@ func AESCBCEncrypt(dst, plainText, key, iv []byte) error {
 	return nil
 }
 
-// AESCBCDecrypt decrypts encryptText with key and iv
+// AESCBCDecrypt decrypts cipherText with key and iv
 // key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
 // iv length must be 16 bytes, iv should be random to ensure safety
-// dst could reuse encryptText memory
+// dst could reuse cipherText memory
 func AESCBCDecrypt(dst, cipherText, key, iv []byte) (int, error) {
 	if len(cipherText) < aes.BlockSize || len(cipherText)&blockSizeMask != 0 {
 		return 0, errors.New("cipherText length illegal")
@@ -107,8 +117,40 @@ func AESCBCDecrypt(dst, cipherText, key, iv []byte) (int, error) {
 	return pkcs7UnPadding(dst)
 }
 
+// AESCTREncrypt encrypts plainText with key and iv
+// key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
+// iv length must be 16 bytes, iv should be random to ensure safety
+// dst could reuse plainText memory
+func AESCTREncrypt(dst, plainText, key, iv []byte) error {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return err
+	}
+
+	stream := cipher.NewCTR(block, iv)
+	stream.XORKeyStream(dst, plainText)
+	return nil
+}
+
+// AESCTRDecrypt decrypts cipherText with key and iv
+// key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
+// iv length must be 16 bytes, iv should be random to ensure safety
+// dst could reuse cipherText memory
+func AESCTRDecrypt(dst, cipherText, key, iv []byte) error {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return err
+	}
+
+	stream := cipher.NewCTR(block, iv)
+	stream.XORKeyStream(dst, cipherText)
+	return nil
+}
+
 // AESGCMEncrypt encrypts plainText with key and additionalData
 // key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
+// nonce recommend 12 bytes length for better performance.
+// additionalData could be nil
 // plainText could pre grow tagSize(default 16) so dst could reuse plainText memory
 func AESGCMEncrypt(dst, plainText, key, nonce, additionalData []byte) error {
 	block, err := aes.NewCipher(key)
@@ -125,9 +167,11 @@ func AESGCMEncrypt(dst, plainText, key, nonce, additionalData []byte) error {
 	return nil
 }
 
-// AESGCMDecrypt decrypts encryptText with key and additionalData
+// AESGCMDecrypt decrypts cipherText with key and additionalData
 // key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
-// dst could reuse encryptText memory, like encryptText[:AESGCMDecryptLen(encryptText)]
+// nonce recommend 12 bytes length for better performance.
+// additionalData could be nil
+// dst could reuse cipherText memory, like cipherText[:AESGCMDecryptLen(cipherText)]
 func AESGCMDecrypt(dst, cipherText, key, nonce, additionalData []byte) error {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -172,7 +216,12 @@ func PKCS7Padding(data []byte, blockSize int) ([]byte, error) {
 	paddingLen := blockSize - (len(data) % blockSize)
 
 	// Create the padding bytes
-	paddingBytes := bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)
+	var paddingBytes []byte
+	if paddingLen <= aes.BlockSize {
+		paddingBytes = prePadPatterns[paddingLen]
+	} else {
+		paddingBytes = bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)
+	}
 
 	// Append the padding bytes to the input data
 	return append(data, paddingBytes...), nil
@@ -202,9 +251,11 @@ func PKCS7UnPadding(data []byte, blockSize int) ([]byte, error) {
 	}
 
 	// Check if the padding bytes are correct
-	paddingBytes := bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)
-	if !bytes.Equal(data[len(data)-paddingLen:], paddingBytes) {
-		return nil, errors.New("invalid padding bytes")
+	paddingBytes := data[len(data)-paddingLen:]
+	for i := 0; i < paddingLen; i++ {
+		if paddingBytes[i] != byte(paddingLen) {
+			return nil, errors.New("invalid padding bytes")
+		}
 	}
 
 	// Remove the padding
