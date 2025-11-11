@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"sort"
 	"strconv"
@@ -18,24 +19,79 @@ const _HIDDEN_KEY = "xx---.internal.request.payload.---xx"
 type Body map[string]any
 
 // Read reads the body as bytes.Reader
-func (b Body) Read(p []byte) (n int, err error) {
-	val, ok := b[_HIDDEN_KEY]
-	if !ok {
-		var bs []byte
-		bs, err = json.Marshal(b)
-		if err != nil {
-			return
-		}
-		reader := bytes.NewReader(bs)
-		b[_HIDDEN_KEY] = reader
-		return reader.Read(p)
+func (b Body) Read(p []byte) (int, error) {
+	r, err := b.JsonReader()
+	if err != nil {
+		return 0, err
 	}
-	return val.(*bytes.Reader).Read(p)
+
+	return r.Read(p)
 }
 
 // CleanPayload cleans the payload
+// Deprecated: use ClearCache instead.
 func (b Body) CleanPayload() {
 	delete(b, _HIDDEN_KEY)
+}
+
+// ClearCache clears the cached reader
+func (b Body) ClearCache() {
+	delete(b, _HIDDEN_KEY)
+}
+
+func (b Body) Close() error {
+	b.ClearCache()
+	return nil
+}
+
+func (b Body) Seek(offset int64, whence int) (int64, error) {
+	r, err := b.JsonReader()
+	if err != nil {
+		return 0, err
+	}
+
+	return r.Seek(offset, whence)
+}
+
+func (b Body) CloneJsonReader() (*bytes.Reader, error) {
+	r, err := b.JsonReader()
+	if err != nil {
+		return nil, err
+	}
+
+	copied := *r
+	_, _ = copied.Seek(0, io.SeekStart)
+	return &copied, nil
+}
+
+func (b Body) MustJsonReader() *bytes.Reader {
+	r, err := b.JsonReader()
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+// JsonReader will return a bytes.Reader for the JSON representation of the Body
+// It will cache the reader for subsequent calls
+func (b Body) JsonReader() (*bytes.Reader, error) {
+	val, ok := b[_HIDDEN_KEY]
+	if !ok {
+		bs, err := json.Marshal(b)
+		if err != nil {
+			return nil, err
+		}
+
+		reader := bytes.NewReader(bs)
+		b[_HIDDEN_KEY] = reader
+		return reader, nil
+	}
+
+	r, ok := val.(*bytes.Reader)
+	if !ok {
+		return nil, fmt.Errorf("invalid reader type")
+	}
+	return r, nil
 }
 
 // QueryString returns the query string
@@ -46,7 +102,7 @@ func (b Body) QueryString(valueEncode func(string) string) string {
 
 // QueryBytes returns the query bytes
 func (b Body) QueryBytes(valueEncode func(string) string) []byte {
-	b.CleanPayload()
+	b.ClearCache()
 
 	if len(b) == 0 {
 		return nil

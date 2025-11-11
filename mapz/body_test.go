@@ -27,7 +27,7 @@ func TestRequest_Read(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.CleanPayload()
+	req.ClearCache()
 	b1, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
