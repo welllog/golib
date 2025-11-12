@@ -1,8 +1,10 @@
 package cryptz
 
 import (
+	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/welllog/golib/testz"
 )
@@ -192,14 +194,26 @@ func TestGCMEncryptV2(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		enc, err := GCMEncryptV2(tt.plainText, tt.pass, tt.addData)
+		enc, err := GCMEncryptV2(tt.plainText, tt.pass, tt.addData, 0)
 		testz.Nil(t, err)
 
-		dec, err := GCMDecryptV2(enc, tt.pass, tt.addData)
+		dec, err := GCMDecryptV2(enc, tt.pass, tt.addData, 0)
 		testz.Nil(t, err)
 
 		testz.Equal(t, string(tt.plainText), string(dec))
 	}
+
+	begin := time.Now()
+	enc, err := GCMEncryptV2([]byte("hello world"), []byte("test"), []byte("test"), 10000)
+	testz.Nil(t, err)
+	fmt.Printf("GCMEncryptV2 cost: %d ms", time.Since(begin).Milliseconds())
+
+	begin = time.Now()
+	dec, err := GCMDecryptV2(enc, []byte("test"), []byte("test"), 10000)
+	testz.Nil(t, err)
+	testz.Equal(t, "hello world", string(dec))
+	fmt.Printf("GCMDecryptV2 cost: %d ms", time.Since(begin).Milliseconds())
+
 }
 
 func TestHybridEncryptDecrypt(t *testing.T) {

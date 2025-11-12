@@ -55,7 +55,6 @@ func Decrypt[T, E typez.StrOrBytes](cipherText T, secret E) ([]byte, error) {
 }
 
 // GCMEncrypt encrypts plainText with secret and additionalData
-// Deprecated: use GCMEncryptV2 instead
 func GCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D) ([]byte, error) {
 	enc, err := SaltBySecretGCMEncrypt(plainText, secret, additionalData)
 	if err != nil {
@@ -68,7 +67,6 @@ func GCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData 
 }
 
 // GCMDecrypt decrypts cipherText with secret and additionalData
-// Deprecated: use GCMDecryptV2 instead
 func GCMDecrypt[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalData D) ([]byte, error) {
 	enc, err := strz.HexDecode(cipherText)
 	if err != nil {
@@ -79,14 +77,16 @@ func GCMDecrypt[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalData
 }
 
 // GCMEncryptV2 encrypts plainText with secret and additionalData
-func GCMEncryptV2[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D) ([]byte, error) {
+// PBKDF2Iter defines the number of iterations for PBKDF2 key derivation, it recommends at least 10000 iterations
+// It is more secure than GCMEncrypt, but also more computationally expensive.
+func GCMEncryptV2[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D, PBKDF2Iter int) ([]byte, error) {
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)
 	if err != nil {
 		return nil, err
 	}
 
-	derived := pbkdf2(strz.UnsafeStrOrBytesToBytes(secret), salt, 10000, keyLen+nonceSize)
+	derived := pbkdf2(strz.UnsafeStrOrBytesToBytes(secret), salt, PBKDF2Iter, keyLen+nonceSize)
 	key := derived[:keyLen]
 	nonce := derived[keyLen:]
 
@@ -106,7 +106,8 @@ func GCMEncryptV2[T, E, D typez.StrOrBytes](plainText T, secret E, additionalDat
 }
 
 // GCMDecryptV2 decrypts cipherText with secret and additionalData
-func GCMDecryptV2[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalData D) ([]byte, error) {
+// PBKDF2Iter defines the number of iterations for PBKDF2 key derivation, it should be same as used in GCMEncryptV2
+func GCMDecryptV2[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalData D, PBKDF2Iter int) ([]byte, error) {
 	enc, err := strz.Base64Decode(cipherText, base64.URLEncoding)
 	if err != nil {
 		return nil, err
@@ -117,7 +118,7 @@ func GCMDecryptV2[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalDa
 	}
 
 	salt := enc[:16]
-	derived := pbkdf2(strz.UnsafeStrOrBytesToBytes(secret), salt, 10000, keyLen+nonceSize)
+	derived := pbkdf2(strz.UnsafeStrOrBytesToBytes(secret), salt, PBKDF2Iter, keyLen+nonceSize)
 	key := derived[:keyLen]
 	nonce := derived[keyLen:]
 
@@ -254,6 +255,9 @@ func HybridDecrypt[T typez.StrOrBytes](ciphertext T, pri *rsa.PrivateKey) ([]byt
 	}
 
 	keySize := int(binary.BigEndian.Uint16(enc[:2]))
+	if keySize <= 0 || keySize > 1024 {
+		return nil, errors.New("key size illegal")
+	}
 	expectedMinLen := 2 + keySize + nonceSize
 	if len(enc) < expectedMinLen {
 		return nil, errors.New("ciphertext too short")
@@ -268,7 +272,11 @@ func HybridDecrypt[T typez.StrOrBytes](ciphertext T, pri *rsa.PrivateKey) ([]byt
 		return nil, err
 	}
 
-	plaintext := encData[:AESGCMDecryptLen(encData)]
+	decLen := AESGCMDecryptLen(encData)
+	if decLen < 0 {
+		return nil, errors.New("ciphertext length illegal")
+	}
+	plaintext := encData[:decLen]
 	err = AESGCMDecrypt(plaintext, encData, aesKey, nonce, nil)
 	if err != nil {
 		return nil, err
@@ -332,6 +340,9 @@ func HybridDecryptStreamTo(out io.Writer, stream io.Reader, pri *rsa.PrivateKey)
 	}
 
 	keySize := int(binary.BigEndian.Uint16(bs))
+	if keySize <= 0 || keySize > 1024 {
+		return errors.New("key size illegal")
+	}
 	encKey := make([]byte, keySize)
 	_, err = io.ReadFull(stream, encKey)
 	if err != nil {
@@ -384,7 +395,10 @@ func SaltBySecretCBCEncrypt[T, E typez.StrOrBytes](plainText T, secret E) ([]byt
 	copy(enc[0:], fixedSaltHeader)
 	copy(enc[8:], salt[:])
 
-	_ = AESCBCEncrypt(enc[aes.BlockSize:], strz.UnsafeStrOrBytesToBytes(plainText), key, iv)
+	err = AESCBCEncrypt(enc[aes.BlockSize:], strz.UnsafeStrOrBytesToBytes(plainText), key, iv)
+	if err != nil {
+		return nil, err
+	}
 
 	return enc, nil
 }
@@ -438,20 +452,24 @@ func SaltBySecretGCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, add
 	copy(enc[0:], fixedSaltHeader)
 	copy(enc[8:], salt[:])
 
-	_ = AESGCMEncrypt(
+	err = AESGCMEncrypt(
 		enc[aes.BlockSize:],
 		strz.UnsafeStrOrBytesToBytes(plainText),
 		key,
 		nonce,
 		strz.UnsafeStrOrBytesToBytes(additionalData),
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	return enc, nil
 }
 
 // SaltBySecretGCMDecrypt
 func SaltBySecretGCMDecrypt[E, D typez.StrOrBytes](cipherText []byte, secret E, additionalData D, reuseCipherText bool) ([]byte, error) {
-	if len(cipherText) < aes.BlockSize {
+	// min: 16(salt header) + 16(tag)
+	if len(cipherText) < 32 {
 		return nil, errors.New("cipherText text length illegal")
 	}
 
@@ -510,9 +528,9 @@ func fillCred[E typez.StrOrBytes](cred []byte, salt []byte, secret E) {
 	}
 }
 
-func pbkdf2(password, salt []byte, iter, keyLen int) []byte {
+func pbkdf2(password, salt []byte, iter, size int) []byte {
 	hashLen := sha256.Size
-	numBlocks := (keyLen + hashLen - 1) / hashLen
+	numBlocks := (size + hashLen - 1) / hashLen
 	var out []byte
 	for block := 1; block <= numBlocks; block++ {
 		// U1 = HMAC(password, salt || INT(block))
@@ -536,5 +554,5 @@ func pbkdf2(password, salt []byte, iter, keyLen int) []byte {
 		}
 		out = append(out, t...)
 	}
-	return out[:keyLen]
+	return out[:size]
 }
