@@ -63,7 +63,7 @@ func ParseRsaPrivateKey[E typez.StrOrBytes](pemData E) (*rsa.PrivateKey, error) 
 }
 
 // RsaOAEPEncrypt encrypts plaintext using RSA-OAEP with SHA-256
-// The maximum length of plaintext less than pub.Size() - 2*32 - 2
+// The maximum length of plaintext is less than pub.Size() - 2*32 - 2
 // For example, with a 2048-bit key and SHA-256, the maximum plaintext length is 190 bytes.
 func RsaOAEPEncrypt[T, L typez.StrOrBytes](plaintext T, label L, pub *rsa.PublicKey) ([]byte, error) {
 	return rsa.EncryptOAEP(
@@ -72,9 +72,9 @@ func RsaOAEPEncrypt[T, L typez.StrOrBytes](plaintext T, label L, pub *rsa.Public
 }
 
 // RsaOAEPDecrypt decrypts ciphertext using RSA-OAEP with SHA-256
-func RsaOAEPDecrypt[T, L typez.StrOrBytes](ciphertext T, label L, pri *rsa.PrivateKey) ([]byte, error) {
+func RsaOAEPDecrypt[T, L typez.StrOrBytes](ciphertext T, label L, prv *rsa.PrivateKey) ([]byte, error) {
 	return rsa.DecryptOAEP(
-		sha256.New(), rand.Reader, pri, strz.UnsafeStrOrBytesToBytes(ciphertext), strz.UnsafeStrOrBytesToBytes(label),
+		sha256.New(), rand.Reader, prv, strz.UnsafeStrOrBytesToBytes(ciphertext), strz.UnsafeStrOrBytesToBytes(label),
 	)
 }
 
@@ -84,6 +84,6 @@ func RsaPKCS1v15Encrypt[T typez.StrOrBytes](plaintext T, pub *rsa.PublicKey) ([]
 }
 
 // RsaPKCS1v15Decrypt decrypts ciphertext using RSA PKCS#1 v1.5
-func RsaPKCS1v15Decrypt[T typez.StrOrBytes](ciphertext T, pri *rsa.PrivateKey) ([]byte, error) {
-	return rsa.DecryptPKCS1v15(rand.Reader, pri, strz.UnsafeStrOrBytesToBytes(ciphertext))
+func RsaPKCS1v15Decrypt[T typez.StrOrBytes](ciphertext T, prv *rsa.PrivateKey) ([]byte, error) {
+	return rsa.DecryptPKCS1v15(rand.Reader, prv, strz.UnsafeStrOrBytesToBytes(ciphertext))
 }

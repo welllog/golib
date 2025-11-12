@@ -51,13 +51,13 @@ func TestRsaOAEPEncryptDecrypt(t *testing.T) {
 	pub, err := ParseRsaPublicKey(pubKey)
 	testz.Nil(t, err)
 
-	pri, err := ParseRsaPrivateKey(prvKey)
+	prv, err := ParseRsaPrivateKey(prvKey)
 	testz.Nil(t, err)
 
 	enc, err := RsaOAEPEncrypt(str, []byte(nil), pub)
 	testz.Nil(t, err)
 
-	dec, err := RsaOAEPDecrypt(enc, "", pri)
+	dec, err := RsaOAEPDecrypt(enc, "", prv)
 	testz.Nil(t, err)
 
 	testz.Equal(t, str, string(dec))
@@ -69,13 +69,13 @@ func TestRsaPKCS1v15EncryptDecrypt(t *testing.T) {
 	pub, err := ParseRsaPublicKey(pubKey)
 	testz.Nil(t, err)
 
-	pri, err := ParseRsaPrivateKey(prvKey)
+	prv, err := ParseRsaPrivateKey(prvKey)
 	testz.Nil(t, err)
 
 	enc, err := RsaPKCS1v15Encrypt(str, pub)
 	testz.Nil(t, err)
 
-	dec, err := RsaPKCS1v15Decrypt(enc, pri)
+	dec, err := RsaPKCS1v15Decrypt(enc, prv)
 	testz.Nil(t, err)
 
 	testz.Equal(t, str, string(dec))

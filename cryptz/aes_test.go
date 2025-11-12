@@ -2,6 +2,7 @@ package cryptz
 
 import (
 	"bytes"
+	"os"
 	"testing"
 
 	"github.com/welllog/golib/testz"
@@ -149,4 +150,59 @@ func TestAESCTREncryptDecrypt(t *testing.T) {
 	if string(text) != str {
 		t.Fatalf("AESCTRDecrypt(%s) != %s", string(text), str)
 	}
+}
+
+func TestAESCTRStreamEncryptDecrypt(t *testing.T) {
+	key := []byte("0123456789abcdef")
+	iv := []byte("abcdef9876543210")
+	text := "hello, this is a test!!!"
+	fileName := "CTR_STREAM.txt"
+	if err := os.WriteFile(fileName, []byte(text), 0644); err != nil {
+		t.Fatalf("os.WriteFile(%s) error: %s", fileName, err)
+	}
+
+	f1, err := os.Open(fileName)
+	if err != nil {
+		t.Fatalf("os.Open(%s) error: %s", fileName, err)
+	}
+
+	f2, err := os.Create(fileName + ".enc")
+	if err != nil {
+		t.Fatalf("os.Create(%s.enc) error: %s", fileName, err)
+	}
+
+	if err := AESCTRStreamEncrypt(f2, f1, key, iv); err != nil {
+		t.Fatalf("AESCTRStreamEncrypt error: %s", err)
+	}
+
+	_ = f1.Close()
+	_ = f2.Close()
+
+	f3, err := os.Open(fileName + ".enc")
+	if err != nil {
+		t.Fatalf("os.Open(%s.enc) error: %s", fileName, err)
+	}
+
+	f4, err := os.Create(fileName)
+	if err != nil {
+		t.Fatalf("os.Create(%s) error: %s", fileName, err)
+	}
+
+	if err := AESCTRStreamDecrypt(f4, f3, key, iv); err != nil {
+		t.Fatalf("AESCTRStreamDecrypt error: %s", err)
+	}
+
+	_ = f3.Close()
+	_ = f4.Close()
+
+	b, err := os.ReadFile(fileName)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%s) error: %s", fileName, err)
+	}
+	if string(b) != text {
+		t.Fatalf("AESCTRStreamDecrypt error, expected: %s, actual: %s", text, string(b))
+	}
+
+	_ = os.Remove(fileName)
+	_ = os.Remove(fileName + ".enc")
 }
