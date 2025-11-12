@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
@@ -20,9 +21,9 @@ import (
 )
 
 const (
-	_SALT_LEN = 8
-	_KEY_LEN  = 32
-	_CRED_LEN = 48 // BLOCK_LEN(16)+KEY_LEN(32)
+	saltLen = 8
+	keyLen  = 32
+	credLen = 48 // BLOCK_LEN(16)+KEY_LEN(32)
 )
 
 var (
@@ -32,60 +33,121 @@ var (
 
 // Encrypt encrypts plainText with secret (openssl aes-256-cbc implementation).
 func Encrypt[T, E typez.StrOrBytes](plainText T, secret E) ([]byte, error) {
-	cipherText, err := SaltBySecretCBCEncrypt(plainText, secret)
+	enc, err := SaltBySecretCBCEncrypt(plainText, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(cipherText)))
-	base64.StdEncoding.Encode(ret, cipherText)
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(enc)))
+	base64.StdEncoding.Encode(ret, enc)
 
 	return ret, nil
 }
 
 // Decrypt decrypts cipherText with secret (openssl aes-256-cbc implementation).
 func Decrypt[T, E typez.StrOrBytes](cipherText T, secret E) ([]byte, error) {
-	src, err := strz.Base64Decode(cipherText, base64.StdEncoding)
+	enc, err := strz.Base64Decode(cipherText, base64.StdEncoding)
 	if err != nil {
 		return nil, err
 	}
 
-	return SaltBySecretCBCDecrypt(src, secret, true)
+	return SaltBySecretCBCDecrypt(enc, secret, true)
 }
 
 // GCMEncrypt encrypts plainText with secret and additionalData
+// Deprecated: use GCMEncryptV2 instead
 func GCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D) ([]byte, error) {
-	cipherText, err := SaltBySecretGCMEncrypt(plainText, secret, additionalData)
+	enc, err := SaltBySecretGCMEncrypt(plainText, secret, additionalData)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := make([]byte, hex.EncodedLen(len(cipherText)))
-	hex.Encode(ret, cipherText)
+	ret := make([]byte, hex.EncodedLen(len(enc)))
+	hex.Encode(ret, enc)
 	return ret, nil
 }
 
 // GCMDecrypt decrypts cipherText with secret and additionalData
+// Deprecated: use GCMDecryptV2 instead
 func GCMDecrypt[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalData D) ([]byte, error) {
-	src, err := strz.HexDecode(cipherText)
+	enc, err := strz.HexDecode(cipherText)
 	if err != nil {
 		return nil, fmt.Errorf("hex decode error: %w", err)
 	}
 
-	return SaltBySecretGCMDecrypt(src, secret, additionalData, true)
+	return SaltBySecretGCMDecrypt(enc, secret, additionalData, true)
+}
+
+// GCMEncryptV2 encrypts plainText with secret and additionalData
+func GCMEncryptV2[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D) ([]byte, error) {
+	salt := make([]byte, 16)
+	_, err := rand.Read(salt)
+	if err != nil {
+		return nil, err
+	}
+
+	derived := pbkdf2(strz.UnsafeStrOrBytesToBytes(secret), salt, 10000, keyLen+nonceSize)
+	key := derived[:keyLen]
+	nonce := derived[keyLen:]
+
+	enc := make([]byte, 16+AESGCMEncryptLen(plainText))
+	copy(enc[0:16], salt)
+
+	err = AESGCMEncrypt(
+		enc[16:], strz.UnsafeStrOrBytesToBytes(plainText), key, nonce, strz.UnsafeStrOrBytesToBytes(additionalData),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]byte, base64.URLEncoding.EncodedLen(len(enc)))
+	base64.URLEncoding.Encode(ret, enc)
+	return ret, nil
+}
+
+// GCMDecryptV2 decrypts cipherText with secret and additionalData
+func GCMDecryptV2[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalData D) ([]byte, error) {
+	enc, err := strz.Base64Decode(cipherText, base64.URLEncoding)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(enc) < 32 {
+		return nil, errors.New("cipherText too short")
+	}
+
+	salt := enc[:16]
+	derived := pbkdf2(strz.UnsafeStrOrBytesToBytes(secret), salt, 10000, keyLen+nonceSize)
+	key := derived[:keyLen]
+	nonce := derived[keyLen:]
+
+	cipherData := enc[16:]
+	decLen := AESGCMDecryptLen(cipherData)
+	if decLen < 0 {
+		return nil, errors.New("cipherText length illegal")
+	}
+
+	plainText := cipherData[:decLen]
+
+	err = AESGCMDecrypt(plainText, cipherData, key, nonce, strz.UnsafeStrOrBytesToBytes(additionalData))
+	if err != nil {
+		return nil, err
+	}
+
+	return plainText, nil
 }
 
 // EncryptStreamTo encrypts stream to out with secret
 func EncryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, secret E) error {
-	var salt [_SALT_LEN]byte
-	var cred [_CRED_LEN]byte
+	var salt [saltLen]byte
+	var cred [credLen]byte
 	err := fillSaltAndCred(salt[:], cred[:], secret)
 	if err != nil {
 		return err
 	}
 
-	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[_KEY_LEN:]
+	key := cred[:keyLen] // 32 bytes, 256 / 8
+	iv := cred[keyLen:]
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -116,24 +178,20 @@ func EncryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, secret
 func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, secret E) error {
 	saltHeader := make([]byte, aes.BlockSize)
 
-	n, err := stream.Read(saltHeader)
+	_, err := io.ReadFull(stream, saltHeader)
 	if err != nil {
 		return fmt.Errorf("read header error: %w", err)
-	}
-
-	if n != aes.BlockSize {
-		return fmt.Errorf("read header less error: n=%d", n)
 	}
 
 	if !bytes.Equal(saltHeader[:8], fixedSaltHeader) {
 		return errors.New("check fixed header error")
 	}
 
-	var cred [_CRED_LEN]byte
+	var cred [credLen]byte
 	fillCred(cred[:], saltHeader[8:], secret)
 
-	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[_KEY_LEN:]
+	key := cred[:keyLen] // 32 bytes, 256 / 8
+	iv := cred[keyLen:]
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -153,57 +211,64 @@ func DecryptStreamTo[E typez.StrOrBytes](out io.Writer, stream io.Reader, secret
 
 // HybridEncrypt use RSA-OAEP + AES-GCM to encrypt plaintext
 func HybridEncrypt[T typez.StrOrBytes](plaintext T, pub *rsa.PublicKey) ([]byte, error) {
-	var rb [_KEY_LEN + nonceSize]byte
+	var rb [keyLen + nonceSize]byte
 	_, err := rand.Read(rb[:])
 	if err != nil {
 		return nil, err
 	}
 
-	aesKey := rb[:_KEY_LEN] // AES-256
-	encKey, err := RsaOAEPEncrypt(aesKey, []byte(nil), pub, sha256.New())
+	aesKey := rb[:keyLen] // AES-256
+	nonce := rb[keyLen:]  // nonceSize bytes
+
+	encKey, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, pub, aesKey, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	nonce := rb[_KEY_LEN:] // nonceSize bytes
-
-	buf := make([]byte, 2+len(encKey)+nonceSize+AESGCMEncryptLen(plaintext))
-	binary.BigEndian.PutUint16(buf[0:2], uint16(len(encKey)))
+	enc := make([]byte, 2+len(encKey)+nonceSize+AESGCMEncryptLen(plaintext))
+	binary.BigEndian.PutUint16(enc[0:2], uint16(len(encKey)))
 	offset := 2
-	offset += copy(buf[offset:], encKey)
-	offset += copy(buf[offset:], nonce)
+	offset += copy(enc[offset:], encKey)
+	offset += copy(enc[offset:], nonce)
 
-	err = AESGCMEncrypt(buf[offset:], strz.UnsafeStrOrBytesToBytes(plaintext), aesKey, nonce, nil)
+	err = AESGCMEncrypt(enc[offset:], strz.UnsafeStrOrBytesToBytes(plaintext), aesKey, nonce, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return buf, nil
+	ret := make([]byte, base64.URLEncoding.EncodedLen(len(enc)))
+	base64.URLEncoding.Encode(ret, enc)
+
+	return ret, nil
 }
 
 // HybridDecrypt use RSA-OAEP + AES-GCM to decrypt ciphertext
 func HybridDecrypt[T typez.StrOrBytes](ciphertext T, pri *rsa.PrivateKey) ([]byte, error) {
-	ciphertextBytes := strz.UnsafeStrOrBytesToBytes(ciphertext)
-	if len(ciphertextBytes) < 2 {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	keyLen := int(binary.BigEndian.Uint16(ciphertextBytes[:2]))
-	expectedMinLen := 2 + keyLen + nonceSize
-	if len(ciphertextBytes) < expectedMinLen {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	encKey := ciphertextBytes[2 : 2+keyLen]
-	nonce := ciphertextBytes[2+keyLen : 2+keyLen+nonceSize]
-	encData := ciphertextBytes[2+keyLen+nonceSize:]
-
-	aesKey, err := RsaOAEPDecrypt(encKey, []byte(nil), pri, sha256.New())
+	enc, err := strz.Base64Decode(ciphertext, base64.URLEncoding)
 	if err != nil {
 		return nil, err
 	}
 
-	plaintext := make([]byte, AESGCMDecryptLen(encData))
+	if len(enc) < 2 {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	keySize := int(binary.BigEndian.Uint16(enc[:2]))
+	expectedMinLen := 2 + keySize + nonceSize
+	if len(enc) < expectedMinLen {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	encKey := enc[2 : 2+keySize]
+	nonce := enc[2+keySize : 2+keySize+nonceSize]
+	encData := enc[2+keySize+nonceSize:]
+
+	aesKey, err := rsa.DecryptOAEP(sha256.New(), nil, pri, encKey, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	plaintext := encData[:AESGCMDecryptLen(encData)]
 	err = AESGCMDecrypt(plaintext, encData, aesKey, nonce, nil)
 	if err != nil {
 		return nil, err
@@ -214,18 +279,19 @@ func HybridDecrypt[T typez.StrOrBytes](ciphertext T, pri *rsa.PrivateKey) ([]byt
 
 // HybridEncryptStreamTo use RSA-OAEP + AES-CTR to encrypt stream to out
 func HybridEncryptStreamTo(out io.Writer, stream io.Reader, pub *rsa.PublicKey) error {
-	var rb [_KEY_LEN + aes.BlockSize]byte
+	var rb [keyLen + aes.BlockSize]byte
 	_, err := rand.Read(rb[:])
 	if err != nil {
 		return err
 	}
 
-	aesKey := rb[:_KEY_LEN] // AES-256
-	encKey, err := RsaOAEPEncrypt(aesKey, []byte(nil), pub, sha256.New())
+	aesKey := rb[:keyLen] // AES-256
+	iv := rb[keyLen:]
+
+	encKey, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, pub, aesKey, nil)
 	if err != nil {
 		return err
 	}
-	iv := rb[_KEY_LEN:]
 
 	block, err := aes.NewCipher(aesKey)
 	if err != nil {
@@ -234,9 +300,18 @@ func HybridEncryptStreamTo(out io.Writer, stream io.Reader, pub *rsa.PublicKey) 
 
 	bs := make([]byte, 2)
 	binary.BigEndian.PutUint16(bs, uint16(len(encKey)))
-	_, _ = out.Write(bs)
-	_, _ = out.Write(encKey)
-	_, _ = out.Write(iv)
+	_, err = out.Write(bs)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(encKey)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(iv)
+	if err != nil {
+		return err
+	}
 
 	encStream := cipher.NewCTR(block, iv)
 	writer := &cipher.StreamWriter{S: encStream, W: out}
@@ -256,8 +331,8 @@ func HybridDecryptStreamTo(out io.Writer, stream io.Reader, pri *rsa.PrivateKey)
 		return fmt.Errorf("read key length error: %w", err)
 	}
 
-	keyLen := int(binary.BigEndian.Uint16(bs))
-	encKey := make([]byte, keyLen)
+	keySize := int(binary.BigEndian.Uint16(bs))
+	encKey := make([]byte, keySize)
 	_, err = io.ReadFull(stream, encKey)
 	if err != nil {
 		return fmt.Errorf("read enc key error: %w", err)
@@ -269,7 +344,7 @@ func HybridDecryptStreamTo(out io.Writer, stream io.Reader, pri *rsa.PrivateKey)
 		return fmt.Errorf("read iv error: %w", err)
 	}
 
-	aesKey, err := RsaOAEPDecrypt(encKey, []byte(nil), pri, sha256.New())
+	aesKey, err := rsa.DecryptOAEP(sha256.New(), nil, pri, encKey, nil)
 	if err != nil {
 		return err
 	}
@@ -292,26 +367,26 @@ func HybridDecryptStreamTo(out io.Writer, stream io.Reader, pri *rsa.PrivateKey)
 
 // SaltBySecretCBCEncrypt
 func SaltBySecretCBCEncrypt[T, E typez.StrOrBytes](plainText T, secret E) ([]byte, error) {
-	var salt [_SALT_LEN]byte
-	var cred [_CRED_LEN]byte
+	var salt [saltLen]byte
+	var cred [credLen]byte
 	err := fillSaltAndCred(salt[:], cred[:], secret)
 	if err != nil {
 		return nil, err
 	}
 
-	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[_KEY_LEN:]  // 16 bytes, same as block size
+	key := cred[:keyLen] // 32 bytes, 256 / 8
+	iv := cred[keyLen:]  // 16 bytes, same as block size
 
 	/*
 		|Salted__(8 byte)|salt(8 byte)|plaintext|
 	*/
-	dst := make([]byte, aes.BlockSize+AESCBCEncryptLen(plainText))
-	copy(dst[0:], fixedSaltHeader)
-	copy(dst[8:], salt[:])
+	enc := make([]byte, aes.BlockSize+AESCBCEncryptLen(plainText))
+	copy(enc[0:], fixedSaltHeader)
+	copy(enc[8:], salt[:])
 
-	_ = AESCBCEncrypt(dst[aes.BlockSize:], strz.UnsafeStrOrBytesToBytes(plainText), key, iv)
+	_ = AESCBCEncrypt(enc[aes.BlockSize:], strz.UnsafeStrOrBytesToBytes(plainText), key, iv)
 
-	return dst, nil
+	return enc, nil
 }
 
 // SaltBySecretCBCDecrypt
@@ -324,54 +399,54 @@ func SaltBySecretCBCDecrypt[E typez.StrOrBytes](cipherText []byte, secret E, reu
 		return nil, errors.New("check cbc fixed header error")
 	}
 
-	var cred [_CRED_LEN]byte
+	var cred [credLen]byte
 	fillCred(cred[:], cipherText[8:aes.BlockSize], secret)
 
-	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
-	iv := cred[_KEY_LEN:]  // 16 bytes, same as block size
+	key := cred[:keyLen] // 32 bytes, 256 / 8
+	iv := cred[keyLen:]  // 16 bytes, same as block size
 
-	cipherText = cipherText[aes.BlockSize:]
-	dst := cipherText
+	cipherData := cipherText[aes.BlockSize:]
+	plainText := cipherData
 	if !reuseCipherText {
-		dst = make([]byte, len(dst))
+		plainText = make([]byte, len(cipherData))
 	}
 
-	n, err := AESCBCDecrypt(dst, cipherText, key, iv)
+	n, err := AESCBCDecrypt(plainText, cipherData, key, iv)
 	if err != nil {
 		return nil, err
 	}
 
-	return dst[:n], nil
+	return plainText[:n], nil
 }
 
 // SaltBySecretGCMEncrypt
 func SaltBySecretGCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D) ([]byte, error) {
-	var salt [_SALT_LEN]byte
-	var cred [_CRED_LEN]byte
+	var salt [saltLen]byte
+	var cred [credLen]byte
 	err := fillSaltAndCred(salt[:], cred[:], secret)
 	if err != nil {
 		return nil, err
 	}
 
-	key := cred[:_KEY_LEN]
-	nonce := cred[_KEY_LEN : _KEY_LEN+nonceSize]
+	key := cred[:keyLen]
+	nonce := cred[keyLen : keyLen+nonceSize]
 
 	/*
 		|Salted__(8 byte)|salt(8 byte)|plaintext|tag(16 byte)|
 	*/
-	dst := make([]byte, aes.BlockSize+AESGCMEncryptLen(plainText))
-	copy(dst[0:], fixedSaltHeader)
-	copy(dst[8:], salt[:])
+	enc := make([]byte, aes.BlockSize+AESGCMEncryptLen(plainText))
+	copy(enc[0:], fixedSaltHeader)
+	copy(enc[8:], salt[:])
 
 	_ = AESGCMEncrypt(
-		dst[aes.BlockSize:],
+		enc[aes.BlockSize:],
 		strz.UnsafeStrOrBytesToBytes(plainText),
 		key,
 		nonce,
 		strz.UnsafeStrOrBytesToBytes(additionalData),
 	)
 
-	return dst, nil
+	return enc, nil
 }
 
 // SaltBySecretGCMDecrypt
@@ -384,22 +459,27 @@ func SaltBySecretGCMDecrypt[E, D typez.StrOrBytes](cipherText []byte, secret E, 
 		return nil, errors.New("check fixed header error")
 	}
 
-	var cred [_CRED_LEN]byte
+	var cred [credLen]byte
 	fillCred(cred[:], cipherText[8:aes.BlockSize], secret)
 
-	key := cred[:_KEY_LEN] // 32 bytes, 256 / 8
-	nonce := cred[_KEY_LEN : _KEY_LEN+nonceSize]
+	key := cred[:keyLen] // 32 bytes, 256 / 8
+	nonce := cred[keyLen : keyLen+nonceSize]
 
-	cipherText = cipherText[aes.BlockSize:]
-	dst := cipherText
-	if !reuseCipherText {
-		dst = make([]byte, len(dst))
+	cipherData := cipherText[aes.BlockSize:]
+	decLen := AESGCMDecryptLen(cipherData)
+	if decLen < 0 {
+		return nil, errors.New("cipherText length illegal")
 	}
-	err := AESGCMDecrypt(dst, cipherText, key, nonce, strz.UnsafeStrOrBytesToBytes(additionalData))
+
+	plainText := cipherData[:decLen]
+	if !reuseCipherText {
+		plainText = make([]byte, decLen)
+	}
+	err := AESGCMDecrypt(plainText, cipherData, key, nonce, strz.UnsafeStrOrBytesToBytes(additionalData))
 	if err != nil {
 		return nil, err
 	}
-	return dst[:AESGCMDecryptLen(dst)], nil
+	return plainText, nil
 }
 
 func fillSaltAndCred[E typez.StrOrBytes](salt, cred []byte, secret E) error {
@@ -428,4 +508,33 @@ func fillCred[E typez.StrOrBytes](cred []byte, salt []byte, secret E) {
 		prevSum = md5.Sum(buf)        // md5(prevSum + secret + salt)
 		copy(cred[i*16:], prevSum[:]) // concat every md5
 	}
+}
+
+func pbkdf2(password, salt []byte, iter, keyLen int) []byte {
+	hashLen := sha256.Size
+	numBlocks := (keyLen + hashLen - 1) / hashLen
+	var out []byte
+	for block := 1; block <= numBlocks; block++ {
+		// U1 = HMAC(password, salt || INT(block))
+		h := hmac.New(sha256.New, password)
+		h.Write(salt)
+		h.Write([]byte{
+			byte(block >> 24), byte(block >> 16), byte(block >> 8), byte(block),
+		})
+		u := h.Sum(nil)
+		t := make([]byte, len(u))
+		copy(t, u)
+
+		// U2..Uc
+		for i := 1; i < iter; i++ {
+			h = hmac.New(sha256.New, password)
+			h.Write(u)
+			u = h.Sum(nil)
+			for j := range t {
+				t[j] ^= u[j]
+			}
+		}
+		out = append(out, t...)
+	}
+	return out[:keyLen]
 }

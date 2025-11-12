@@ -3,6 +3,8 @@ package cryptz
 import (
 	"bytes"
 	"testing"
+
+	"github.com/welllog/golib/testz"
 )
 
 func TestAESCBCEncrypt(t *testing.T) {
@@ -88,6 +90,43 @@ func TestAESGCMDecrypt(t *testing.T) {
 
 	if string(enc[:AESGCMDecryptLen(enc)]) != str {
 		t.Fatalf("AESGCMDecrypt(%s) != %s", string(enc[:AESGCMDecryptLen(enc)]), str)
+	}
+}
+
+func TestAESGCMEncryptDecrypt(t *testing.T) {
+	keys := []struct {
+		key   []byte
+		nonce []byte
+	}{
+		{[]byte("0123456789abcdef"), []byte("abc")},
+		{[]byte("0123456789abcdef"), []byte("0123456789ab")},
+		{[]byte("0123456789abcdef01234567"), []byte("0123456789ab")},
+		{[]byte("0123456789abcdef0123456789abcdef"), []byte("0123456789ab")},
+	}
+
+	texts := [][]byte{
+		[]byte("hello world"),
+		[]byte("1231"),
+		[]byte("ovevvdcq"),
+		[]byte("👋，世界"),
+		[]byte("what happen"),
+		[]byte(""),
+		[]byte("0123456789abcdef0123456789abcdef"),
+		[]byte("0123456789abcdef0123456789abcdef0123456789abcdef"),
+		[]byte("0123456789abcdef+-/;.,,,.'[]123!@#$%^&*()_+0123456789abcdef0123456789abcdef0123456789abcdef"),
+	}
+
+	for _, k := range keys {
+		for _, text := range texts {
+			enc := make([]byte, AESGCMEncryptLen(text))
+			err := AESGCMEncrypt(enc, text, k.key, k.nonce, []byte("demo"))
+			testz.Nil(t, err)
+
+			err = AESGCMDecrypt(enc[:AESGCMDecryptLen(enc)], enc, k.key, k.nonce, []byte("demo"))
+			testz.Nil(t, err)
+
+			testz.Equal(t, string(enc[:AESGCMDecryptLen(enc)]), string(text))
+		}
 	}
 }
 

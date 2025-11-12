@@ -179,6 +179,29 @@ func TestGCMEncrypt(t *testing.T) {
 	}
 }
 
+func TestGCMEncryptV2(t *testing.T) {
+	tests := []struct {
+		plainText []byte
+		pass      []byte
+		addData   []byte
+	}{
+		{[]byte("hello world"), []byte("im a pass"), []byte("im a additional data")},
+		{[]byte("hello world"), []byte("im a pass"), nil},
+		{[]byte("hello world"), []byte("im a pass"), []byte("")},
+		{[]byte("👋,world"), []byte("test"), nil},
+	}
+
+	for _, tt := range tests {
+		enc, err := GCMEncryptV2(tt.plainText, tt.pass, tt.addData)
+		testz.Nil(t, err)
+
+		dec, err := GCMDecryptV2(enc, tt.pass, tt.addData)
+		testz.Nil(t, err)
+
+		testz.Equal(t, string(tt.plainText), string(dec))
+	}
+}
+
 func TestHybridEncryptDecrypt(t *testing.T) {
 	var str = "dadsadsajwbd1wibdiw1bidw1"
 

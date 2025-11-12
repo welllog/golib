@@ -3,10 +3,10 @@ package cryptz
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"hash"
 
 	"github.com/welllog/golib/strz"
 	"github.com/welllog/golib/typez"
@@ -62,31 +62,25 @@ func ParseRsaPrivateKey[E typez.StrOrBytes](pemData E) (*rsa.PrivateKey, error) 
 	}
 }
 
-// RsaOAEPEncrypt encrypts plaintext using RSA-OAEP
-// The maximum length of plaintext less than pub.Size() - 2*hash.Size() - 2
+// RsaOAEPEncrypt encrypts plaintext using RSA-OAEP with SHA-256
+// The maximum length of plaintext less than pub.Size() - 2*32 - 2
 // For example, with a 2048-bit key and SHA-256, the maximum plaintext length is 190 bytes.
-func RsaOAEPEncrypt[T, L typez.StrOrBytes](plaintext T, label L, pub *rsa.PublicKey, hash hash.Hash) ([]byte, error) {
-	maxLen := pub.Size() - 2*hash.Size() - 2
-	pt := strz.UnsafeStrOrBytesToBytes(plaintext)
-	if len(pt) > maxLen {
-		return nil, errors.New("plaintext length exceeds single encryption limit")
-	}
-	return rsa.EncryptOAEP(hash, rand.Reader, pub, pt, strz.UnsafeStrOrBytesToBytes(label))
+func RsaOAEPEncrypt[T, L typez.StrOrBytes](plaintext T, label L, pub *rsa.PublicKey) ([]byte, error) {
+	return rsa.EncryptOAEP(
+		sha256.New(), rand.Reader, pub, strz.UnsafeStrOrBytesToBytes(plaintext), strz.UnsafeStrOrBytesToBytes(label),
+	)
 }
 
-// RsaOAEPDecrypt decrypts ciphertext using RSA-OAEP
-func RsaOAEPDecrypt[T, L typez.StrOrBytes](ciphertext T, label L, pri *rsa.PrivateKey, hash hash.Hash) ([]byte, error) {
-	return rsa.DecryptOAEP(hash, rand.Reader, pri, strz.UnsafeStrOrBytesToBytes(ciphertext), strz.UnsafeStrOrBytesToBytes(label))
+// RsaOAEPDecrypt decrypts ciphertext using RSA-OAEP with SHA-256
+func RsaOAEPDecrypt[T, L typez.StrOrBytes](ciphertext T, label L, pri *rsa.PrivateKey) ([]byte, error) {
+	return rsa.DecryptOAEP(
+		sha256.New(), rand.Reader, pri, strz.UnsafeStrOrBytesToBytes(ciphertext), strz.UnsafeStrOrBytesToBytes(label),
+	)
 }
 
 // RsaPKCS1v15Encrypt encrypts plaintext using RSA PKCS#1 v1.5
 func RsaPKCS1v15Encrypt[T typez.StrOrBytes](plaintext T, pub *rsa.PublicKey) ([]byte, error) {
-	maxLen := pub.Size() - 11
-	pt := strz.UnsafeStrOrBytesToBytes(plaintext)
-	if len(pt) > maxLen {
-		return nil, errors.New("plaintext length exceeds single encryption limit")
-	}
-	return rsa.EncryptPKCS1v15(rand.Reader, pub, pt)
+	return rsa.EncryptPKCS1v15(rand.Reader, pub, strz.UnsafeStrOrBytesToBytes(plaintext))
 }
 
 // RsaPKCS1v15Decrypt decrypts ciphertext using RSA PKCS#1 v1.5

@@ -1,7 +1,6 @@
 package cryptz
 
 import (
-	"crypto/sha256"
 	"testing"
 
 	"github.com/welllog/golib/testz"
@@ -55,10 +54,10 @@ func TestRsaOAEPEncryptDecrypt(t *testing.T) {
 	pri, err := ParseRsaPrivateKey(prvKey)
 	testz.Nil(t, err)
 
-	enc, err := RsaOAEPEncrypt(str, []byte(nil), pub, sha256.New())
+	enc, err := RsaOAEPEncrypt(str, []byte(nil), pub)
 	testz.Nil(t, err)
 
-	dec, err := RsaOAEPDecrypt(enc, "", pri, sha256.New())
+	dec, err := RsaOAEPDecrypt(enc, "", pri)
 	testz.Nil(t, err)
 
 	testz.Equal(t, str, string(dec))
