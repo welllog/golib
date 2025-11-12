@@ -12,9 +12,7 @@ import (
 	"github.com/welllog/golib/strz"
 )
 
-const (
-	ClientRetryPolicyKey = "httpz_retry_policy"
-)
+type clientRetryPolicyKey struct{}
 
 type Codec interface {
 	Marshal(v any) ([]byte, error)
@@ -62,13 +60,13 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 // Only request bodies of type *bytes.Buffer, *bytes.Reader, and *strings.Reader will automatically have the
 // GetBody method set. For others, please define the GetBody method yourself.
 func (c *Client) DoWithRetry(req *http.Request, retryPolicy RetryPolicy) (*http.Response, error) {
-	ctx := context.WithValue(req.Context(), ClientRetryPolicyKey, retryPolicy)
+	ctx := context.WithValue(req.Context(), clientRetryPolicyKey{}, retryPolicy)
 	return c.doChain(ctx, req)
 }
 
 // DoWithoutRetry executes the request without any retry attempts.
 func (c *Client) DoWithoutRetry(req *http.Request) (*http.Response, error) {
-	ctx := context.WithValue(req.Context(), ClientRetryPolicyKey, RetryPolicy{})
+	ctx := context.WithValue(req.Context(), clientRetryPolicyKey{}, RetryPolicy{})
 	return c.doChain(ctx, req)
 }
 
@@ -132,7 +130,7 @@ func (c *Client) Request(ctx context.Context, method, path string, headers map[s
 }
 
 func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Response, error) {
-	policyVal := ctx.Value(ClientRetryPolicyKey)
+	policyVal := ctx.Value(clientRetryPolicyKey{})
 	retryPolicy, ok := policyVal.(RetryPolicy)
 	if !ok { // use global retry policy
 		retryPolicy = c.retryPolicy
