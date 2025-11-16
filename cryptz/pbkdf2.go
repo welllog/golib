@@ -5,6 +5,23 @@ import (
 	"hash"
 )
 
+// PBKDF2Key derives a cryptographic key from a password and salt using the PBKDF2 algorithm.
+//
+// Parameters:
+//   password - The input password as a byte slice.
+//   salt     - A unique salt as a byte slice. Use a cryptographically secure random value.
+//   iter     - The number of iterations. A higher value increases computational cost and security.
+//              The minimum recommended value is 10,000; values below this may be vulnerable to brute-force attacks.
+//   keyLen   - The desired length of the derived key in bytes.
+//   h        - A constructor for the underlying hash function (e.g., sha256.New).
+//
+// Returns:
+//   A byte slice containing the derived key of length keyLen.
+//
+// Security notes:
+//   - Always use a unique, random salt for each password.
+//   - Choose a sufficiently high iteration count (iter) to slow down brute-force attacks.
+//   - Refer to current security guidelines for recommended parameters.
 func PBKDF2Key(password, salt []byte, iter, keyLen int, h func() hash.Hash) []byte {
 	prf := hmac.New(h, password)
 	hashLen := prf.Size()
