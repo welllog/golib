@@ -31,7 +31,7 @@ func Encrypt[T, E typez.StrOrBytes](plainText T, secret E) ([]byte, error) {
 	encLen := aes.BlockSize + AESCBCEncryptLen(plainText)
 	base64EncLen := base64.StdEncoding.EncodedLen(encLen)
 	ret := make([]byte, base64EncLen)
-	// get the tail buf to write encrypted data, then using base64 encode it to head, this could avoid extra buf
+	// get the tail buffer to write encrypted data, then use base64 to encode it to the head; this could avoid extra buffer allocation
 	enc := ret[base64EncLen-encLen:]
 
 	_, err := SaltBySecretCBCEncrypt(plainText, secret, enc)
