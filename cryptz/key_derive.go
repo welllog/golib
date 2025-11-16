@@ -26,7 +26,7 @@ type KeyDeriver interface {
 }
 
 type PBKDF2KeyDeriver struct {
-	// Iter is pbkdf2 iteration count, it recommended to be at least 10_000
+	// Iter is pbkdf2 iteration count, it is recommended to be at least 10_000
 	Iter uint32
 	// Hash is the hash algorithm used in pbkdf2
 	Hash HashAlgo
