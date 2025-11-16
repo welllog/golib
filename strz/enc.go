@@ -3,7 +3,6 @@ package strz
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -66,21 +65,6 @@ func Base64EncodeToString[T typez.StrOrBytes](s T, enc *base64.Encoding) string 
 func Base64DecodeToString[T typez.StrOrBytes](s T, enc *base64.Encoding) (string, error) {
 	b, err := Base64Decode(s, enc)
 	return UnsafeString(b), err
-}
-
-// IPv4ToLong converts an IPv4 address to an uint32
-func IPv4ToLong(ip string) uint32 {
-	var long uint32
-	for _, v := range strings.Split(ip, ".") {
-		n, _ := strconv.ParseInt(v, 10, 32)
-		long = long<<8 + uint32(n)
-	}
-	return long
-}
-
-// LongToIPv4 converts an uint32 to an IPv4 address
-func LongToIPv4(long uint32) string {
-	return net.IPv4(byte(long>>24), byte(long>>16), byte(long>>8), byte(long)).String()
 }
 
 // OctalFormat returns the octal encode format \ooo

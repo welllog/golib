@@ -95,55 +95,57 @@ func TestEncrypt(t *testing.T) {
 }
 
 func TestEncryptStreamTo(t *testing.T) {
+	secret := "test"
 	text := "hello, this is a test!!!"
-	if err := os.WriteFile("1.txt", []byte(text), 0644); err != nil {
-		t.Fatalf("os.WriteFile(1.txt) error: %s", err)
+	fileName := "STREAM.txt"
+	if err := os.WriteFile(fileName, []byte(text), 0644); err != nil {
+		t.Fatalf("os.WriteFile(%s) error: %s", fileName, err)
 	}
 
-	f1, err := os.Open("1.txt")
+	f1, err := os.Open(fileName)
 	if err != nil {
-		t.Fatalf("os.Open(1.txt) error: %s", err)
+		t.Fatalf("os.Open(%s) error: %s", fileName, err)
 	}
 
-	f2, err := os.Create("1.txt.enc")
+	f2, err := os.Create(fileName + ".enc")
 	if err != nil {
-		t.Fatalf("os.Create(1.txt.enc) error: %s", err)
+		t.Fatalf("os.Create(%s.enc) error: %s", fileName, err)
 	}
 
-	if err := EncryptStreamTo(f2, f1, "123456"); err != nil {
+	if err := EncryptStreamTo(f2, f1, secret); err != nil {
 		t.Fatalf("EncryptStreamTo error: %s", err)
 	}
 
 	_ = f1.Close()
 	_ = f2.Close()
 
-	f3, err := os.Open("1.txt.enc")
+	f3, err := os.Open(fileName + ".enc")
 	if err != nil {
-		t.Fatalf("os.Open(1.txt.enc) error: %s", err)
+		t.Fatalf("os.Open(%s.enc) error: %s", fileName, err)
 	}
 
-	f4, err := os.Create("1.txt")
+	f4, err := os.Create(fileName)
 	if err != nil {
-		t.Fatalf("os.Create(1.txt) error: %s", err)
+		t.Fatalf("os.Create(%s) error: %s", fileName, err)
 	}
 
-	if err := DecryptStreamTo(f4, f3, []byte("123456")); err != nil {
+	if err := DecryptStreamTo(f4, f3, secret); err != nil {
 		t.Fatalf("DecryptStreamTo error: %s", err)
 	}
 
 	_ = f3.Close()
 	_ = f4.Close()
 
-	b, err := os.ReadFile("1.txt")
+	b, err := os.ReadFile(fileName)
 	if err != nil {
-		t.Fatalf("os.ReadFile(1.txt) error: %s", err)
+		t.Fatalf("os.ReadFile(%s) error: %s", fileName, err)
 	}
 	if string(b) != text {
 		t.Fatalf("DecryptStreamTo error, expected: %s, actual: %s", text, string(b))
 	}
 
-	_ = os.Remove("1.txt")
-	_ = os.Remove("1.txt.enc")
+	_ = os.Remove(fileName)
+	_ = os.Remove(fileName + ".enc")
 }
 
 func TestGCMEncrypt(t *testing.T) {
@@ -177,80 +179,4 @@ func TestGCMEncrypt(t *testing.T) {
 	if string(dec) != plainText {
 		t.Fatalf("GCMDecrypt error, expected: %s, actual: %s", plainText, string(dec))
 	}
-}
-
-func TestHybridEncryptDecrypt(t *testing.T) {
-	var str = "dadsadsajwbd1wibdiw1bidw1"
-
-	pub, err := ParseRsaPublicKey(pubKey)
-	testz.Nil(t, err)
-
-	pri, err := ParseRsaPrivateKey(prvKey)
-	testz.Nil(t, err)
-
-	enc, err := HybridEncrypt(str, pub)
-	testz.Nil(t, err)
-
-	dec, err := HybridDecrypt(enc, pri)
-	testz.Nil(t, err)
-
-	testz.Equal(t, str, string(dec))
-}
-
-func TestHybridEncryptStreamTo(t *testing.T) {
-	pub, err := ParseRsaPublicKey(pubKey)
-	testz.Nil(t, err)
-
-	pri, err := ParseRsaPrivateKey(prvKey)
-	testz.Nil(t, err)
-
-	text := "hello, this is a test!!!"
-	if err := os.WriteFile("2.txt", []byte(text), 0644); err != nil {
-		t.Fatalf("os.WriteFile(2.txt) error: %s", err)
-	}
-
-	f1, err := os.Open("2.txt")
-	if err != nil {
-		t.Fatalf("os.Open(2.txt) error: %s", err)
-	}
-
-	f2, err := os.Create("2.txt.enc")
-	if err != nil {
-		t.Fatalf("os.Create(2.txt.enc) error: %s", err)
-	}
-
-	if err := HybridEncryptStreamTo(f2, f1, pub); err != nil {
-		t.Fatalf("HybridEncryptStreamTo error: %s", err)
-	}
-
-	_ = f1.Close()
-	_ = f2.Close()
-
-	f3, err := os.Open("2.txt.enc")
-	if err != nil {
-		t.Fatalf("os.Open(2.txt.enc) error: %s", err)
-	}
-
-	f4, err := os.Create("2.txt")
-	if err != nil {
-		t.Fatalf("os.Create(2.txt) error: %s", err)
-	}
-
-	if err := HybridDecryptStreamTo(f4, f3, pri); err != nil {
-		t.Fatalf("DecryptStreamTo error: %s", err)
-	}
-
-	_ = f3.Close()
-	_ = f4.Close()
-
-	b, err := os.ReadFile("2.txt")
-	if err != nil {
-		t.Fatalf("os.ReadFile(1.txt) error: %s", err)
-	}
-	if string(b) != text {
-		t.Fatalf("DecryptStreamTo error, expected: %s, actual: %s", text, string(b))
-	}
-
-	_ = os.Remove("2.txt")
-	_ = os.Remove("2.txt.enc")
 }

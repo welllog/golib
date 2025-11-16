@@ -2,7 +2,10 @@ package cryptz
 
 import (
 	"bytes"
+	"os"
 	"testing"
+
+	"github.com/welllog/golib/testz"
 )
 
 func TestAESCBCEncrypt(t *testing.T) {
@@ -91,6 +94,43 @@ func TestAESGCMDecrypt(t *testing.T) {
 	}
 }
 
+func TestAESGCMEncryptDecrypt(t *testing.T) {
+	keys := []struct {
+		key   []byte
+		nonce []byte
+	}{
+		{[]byte("0123456789abcdef"), []byte("abc")},
+		{[]byte("0123456789abcdef"), []byte("0123456789ab")},
+		{[]byte("0123456789abcdef01234567"), []byte("0123456789ab")},
+		{[]byte("0123456789abcdef0123456789abcdef"), []byte("0123456789ab")},
+	}
+
+	texts := [][]byte{
+		[]byte("hello world"),
+		[]byte("1231"),
+		[]byte("ovevvdcq"),
+		[]byte("👋，世界"),
+		[]byte("what happen"),
+		[]byte(""),
+		[]byte("0123456789abcdef0123456789abcdef"),
+		[]byte("0123456789abcdef0123456789abcdef0123456789abcdef"),
+		[]byte("0123456789abcdef+-/;.,,,.'[]123!@#$%^&*()_+0123456789abcdef0123456789abcdef0123456789abcdef"),
+	}
+
+	for _, k := range keys {
+		for _, text := range texts {
+			enc := make([]byte, AESGCMEncryptLen(text))
+			err := AESGCMEncrypt(enc, text, k.key, k.nonce, []byte("demo"))
+			testz.Nil(t, err)
+
+			err = AESGCMDecrypt(enc[:AESGCMDecryptLen(enc)], enc, k.key, k.nonce, []byte("demo"))
+			testz.Nil(t, err)
+
+			testz.Equal(t, string(enc[:AESGCMDecryptLen(enc)]), string(text))
+		}
+	}
+}
+
 func TestAESCTREncryptDecrypt(t *testing.T) {
 	key := []byte("0123456789abcdef")
 	iv := []byte("abcdef9876543210")
@@ -110,4 +150,59 @@ func TestAESCTREncryptDecrypt(t *testing.T) {
 	if string(text) != str {
 		t.Fatalf("AESCTRDecrypt(%s) != %s", string(text), str)
 	}
+}
+
+func TestAESCTRStreamEncryptDecrypt(t *testing.T) {
+	key := []byte("0123456789abcdef")
+	iv := []byte("abcdef9876543210")
+	text := "hello, this is a test!!!"
+	fileName := "CTR_STREAM.txt"
+	if err := os.WriteFile(fileName, []byte(text), 0644); err != nil {
+		t.Fatalf("os.WriteFile(%s) error: %s", fileName, err)
+	}
+
+	f1, err := os.Open(fileName)
+	if err != nil {
+		t.Fatalf("os.Open(%s) error: %s", fileName, err)
+	}
+
+	f2, err := os.Create(fileName + ".enc")
+	if err != nil {
+		t.Fatalf("os.Create(%s.enc) error: %s", fileName, err)
+	}
+
+	if err := AESCTRStreamEncrypt(f2, f1, key, iv); err != nil {
+		t.Fatalf("AESCTRStreamEncrypt error: %s", err)
+	}
+
+	_ = f1.Close()
+	_ = f2.Close()
+
+	f3, err := os.Open(fileName + ".enc")
+	if err != nil {
+		t.Fatalf("os.Open(%s.enc) error: %s", fileName, err)
+	}
+
+	f4, err := os.Create(fileName)
+	if err != nil {
+		t.Fatalf("os.Create(%s) error: %s", fileName, err)
+	}
+
+	if err := AESCTRStreamDecrypt(f4, f3, key, iv); err != nil {
+		t.Fatalf("AESCTRStreamDecrypt error: %s", err)
+	}
+
+	_ = f3.Close()
+	_ = f4.Close()
+
+	b, err := os.ReadFile(fileName)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%s) error: %s", fileName, err)
+	}
+	if string(b) != text {
+		t.Fatalf("AESCTRStreamDecrypt error, expected: %s, actual: %s", text, string(b))
+	}
+
+	_ = os.Remove(fileName)
+	_ = os.Remove(fileName + ".enc")
 }

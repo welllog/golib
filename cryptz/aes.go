@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/welllog/golib/typez"
 )
@@ -124,7 +125,7 @@ func AESCBCDecrypt(dst, cipherText, key, iv []byte) (int, error) {
 func AESCTREncrypt(dst, plainText, key, iv []byte) error {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return err
+		return fmt.Errorf("NewCipher error: %w", err)
 	}
 
 	stream := cipher.NewCTR(block, iv)
@@ -139,11 +140,49 @@ func AESCTREncrypt(dst, plainText, key, iv []byte) error {
 func AESCTRDecrypt(dst, cipherText, key, iv []byte) error {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return err
+		return fmt.Errorf("NewCipher error: %w", err)
 	}
 
 	stream := cipher.NewCTR(block, iv)
 	stream.XORKeyStream(dst, cipherText)
+	return nil
+}
+
+// AESCTRStreamEncrypt encrypts data from src reader to dst writer with key and iv
+// key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
+// iv length must be 16 bytes, iv should be random to ensure safety
+func AESCTRStreamEncrypt(dst io.Writer, stream io.Reader, key, iv []byte) error {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return fmt.Errorf("NewCipher error: %w", err)
+	}
+
+	encStream := cipher.NewCTR(block, iv)
+	writer := &cipher.StreamWriter{S: encStream, W: dst}
+	_, err = io.Copy(writer, stream)
+	if err != nil {
+		return fmt.Errorf("encrypt stream error: %w", err)
+	}
+
+	return nil
+}
+
+// AESCTRStreamDecrypt decrypts data from src reader to dst writer with key and iv
+// key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
+// iv length must be 16 bytes, iv should be random to ensure safety
+func AESCTRStreamDecrypt(dst io.Writer, stream io.Reader, key, iv []byte) error {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return fmt.Errorf("NewCipher error: %w", err)
+	}
+
+	decStream := cipher.NewCTR(block, iv)
+	reader := &cipher.StreamReader{S: decStream, R: stream}
+	_, err = io.Copy(dst, reader)
+	if err != nil {
+		return fmt.Errorf("decrypt stream error: %w", err)
+	}
+
 	return nil
 }
 
@@ -208,8 +247,8 @@ func PKCS7Padding(data []byte, blockSize int) ([]byte, error) {
 		return nil, errors.New("input data cannot be empty")
 	}
 
-	if blockSize <= 0 {
-		return nil, errors.New("block size must be a positive integer")
+	if blockSize <= 0 || blockSize > 255 {
+		return nil, errors.New("block size must be between 1 and 255")
 	}
 
 	// Calculate the padding length
@@ -234,8 +273,8 @@ func PKCS7UnPadding(data []byte, blockSize int) ([]byte, error) {
 		return nil, errors.New("input data cannot be empty")
 	}
 
-	if blockSize <= 0 {
-		return nil, errors.New("block size must be a positive integer")
+	if blockSize <= 0 || blockSize > 255 {
+		return nil, errors.New("block size must be between 1 and 255")
 	}
 
 	if len(data)%blockSize != 0 {
@@ -265,6 +304,9 @@ func PKCS7UnPadding(data []byte, blockSize int) ([]byte, error) {
 func pkcs7UnPadding(data []byte) (int, error) {
 	paddingLen := int(data[len(data)-1])
 	if paddingLen > aes.BlockSize || paddingLen <= 0 {
+		return 0, errors.New("invalid padding length")
+	}
+	if len(data) < paddingLen {
 		return 0, errors.New("invalid padding length")
 	}
 	if !bytes.Equal(prePadPatterns[paddingLen], data[len(data)-paddingLen:]) {
