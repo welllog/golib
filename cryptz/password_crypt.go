@@ -3,6 +3,7 @@ package cryptz
 import (
 	"bufio"
 	"bytes"
+	"crypto"
 	"crypto/aes"
 	"crypto/rand"
 	"encoding/base64"
@@ -29,14 +30,16 @@ var (
 	ErrInvalidKeyDeriverHeader = errors.New("invalid header")
 	ErrInvalidCipherStream     = errors.New("invalid cipher stream")
 
-	passMagic       = [magicLen]byte{'W', 'L', 'P', 'A', 'S', 'S', 'W', 'D'}
+	// passMagic WLPWDSEG
+	passMagic = [magicLen]byte{'W', 'L', 'P', 'W', 'D', 'S', 'E', 'G'}
+	// passStreamMagic WLPWDSTR
 	passStreamMagic = [magicLen]byte{'W', 'L', 'P', 'W', 'D', 'S', 'T', 'R'}
 
 	keyDeriverRegistry = make(map[[IDLen]byte]KeyDeriver, 4)
 
 	defKeyDeriver = PBKDF2KeyDeriver{
 		Iter: 10_000,
-		Hash: SHA256,
+		Hash: crypto.SHA256,
 	}
 )
 
