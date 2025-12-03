@@ -74,6 +74,7 @@ func (s *SafeKV[K, V]) GetOrSet(key K, value V) (actual V, got bool) {
 
 // GetOrSetFunc returns the value associated with the key if it exists.
 // Otherwise, it sets the value associated with the key to the result of fn and returns that value.
+// got indicates whether the value was already present.
 func (s *SafeKV[K, V]) GetOrSetFunc(key K, fn func() (V, error)) (actual V, got bool, err error) {
 	s.mu.RLock()
 	actual, got = s.entries[key]
