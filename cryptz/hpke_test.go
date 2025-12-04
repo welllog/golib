@@ -345,7 +345,20 @@ func TestHPKE_CiphertextSize(t *testing.T) {
 	}
 
 	if reflect.ValueOf(dst).Pointer() != reflect.ValueOf(cipherText).Pointer() {
-		t.Errorf("dst and cipherText should share the same underlying array. dst: %p, cipherText: %p", &dst[0], &cipherText[0])
+		t.Errorf("dst and cipherText should share the same underlying array. dst: %p, cipherText: %p",
+			func() interface{} {
+				if len(dst) > 0 {
+					return &dst[0]
+				}
+				return nil
+			}(),
+			func() interface{} {
+				if len(cipherText) > 0 {
+					return &cipherText[0]
+				}
+				return nil
+			}(),
+		)
 	}
 
 	ret, err := hpke.Open(dst, rpriv, spub, nil, cipherText, nil)
