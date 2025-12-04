@@ -646,7 +646,7 @@ func (c *HPKEContext) Seal(dst, plaintext, aad []byte) ([]byte, error) {
 }
 
 // Open opens the ciphertext using the receiver context.
-// The ciphertext don't include the ephemeral public key.
+// The ciphertext doesn't include the ephemeral public key.
 // It could reuse ciphertext as dst for in-place decryption, like ciphertext[:0]
 func (c *HPKEContext) Open(dst, ciphertext, aad []byte) ([]byte, error) {
 	nonce := nonceForSeq(c.nonceBuf, c.baseNonce, c.seq)
