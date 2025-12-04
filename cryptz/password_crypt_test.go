@@ -126,10 +126,10 @@ func TestPasswordEncryptDecryptLarge(t *testing.T) {
 	ad := []byte("additional data")
 	plainText := make([]byte, 512*1024)
 
-	chipherText, err := PasswordEncrypt(plainText, pwd, ad, PBKDF2KeyDeriver{10000, crypto.SHA256})
+	cipherText, err := PasswordEncrypt(plainText, pwd, ad, PBKDF2KeyDeriver{10000, crypto.SHA256})
 	testz.Nil(t, err)
 
-	decrypted, err := PasswordDecrypt(chipherText, pwd, ad)
+	decrypted, err := PasswordDecrypt(cipherText, pwd, ad)
 	testz.Nil(t, err)
 	testz.Equal(t, len(plainText), len(decrypted))
 
