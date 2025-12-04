@@ -2,7 +2,9 @@ package cryptz
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/md5"
+	_ "crypto/sha512"
 	"fmt"
 	"os"
 	"testing"
@@ -76,11 +78,11 @@ func TestPasswordEncryptDecrypt(t *testing.T) {
 		},
 		{
 			[]byte("hello world"), []byte("im a pass"), []byte(""),
-			PBKDF2KeyDeriver{1, SHA512},
+			PBKDF2KeyDeriver{1, crypto.SHA512},
 		},
 		{
 			[]byte("👋,world"), []byte("test"), nil,
-			PBKDF2KeyDeriver{10, MD5},
+			PBKDF2KeyDeriver{10, crypto.MD5},
 		},
 		{
 			[]byte("hello world"), []byte("im a pass"), nil,
@@ -108,7 +110,7 @@ func TestPasswordEncryptDecrypt(t *testing.T) {
 
 	begin := time.Now()
 	enc, err := PasswordEncrypt([]byte("hello world"), []byte("test"), []byte("test"),
-		PBKDF2KeyDeriver{100_0000, SHA256})
+		PBKDF2KeyDeriver{100_0000, crypto.SHA256})
 	testz.Nil(t, err)
 	fmt.Printf("PasswordEncrypt pbkf2-sha256 iter 100_0000 cost: %d ms \n", time.Since(begin).Milliseconds())
 
@@ -117,6 +119,20 @@ func TestPasswordEncryptDecrypt(t *testing.T) {
 	testz.Nil(t, err)
 	testz.Equal(t, "hello world", string(dec))
 	fmt.Printf("PasswordDecrypt pbkf2-sha256 iter 100_0000 cost: %d ms \n", time.Since(begin).Milliseconds())
+}
+
+func TestPasswordEncryptDecryptLarge(t *testing.T) {
+	pwd := []byte("test")
+	ad := []byte("additional data")
+	plainText := make([]byte, 512*1024)
+
+	cipherText, err := PasswordEncrypt(plainText, pwd, ad, PBKDF2KeyDeriver{10000, crypto.SHA256})
+	testz.Nil(t, err)
+
+	decrypted, err := PasswordDecrypt(cipherText, pwd, ad)
+	testz.Nil(t, err)
+	testz.Equal(t, len(plainText), len(decrypted))
+
 }
 
 func TestPasswordEncryptDecryptStream(t *testing.T) {

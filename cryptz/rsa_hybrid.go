@@ -24,8 +24,10 @@ const (
 )
 
 var (
-	hybridMagic       = [magicLen]byte{'W', 'L', 'H', 'Y', 'B', 'R', 'I', 'D'}
-	hybridStreamMagic = [magicLen]byte{'W', 'L', 'S', 'T', 'R', 'E', 'A', 'M'}
+	// hybridMagic WLHBRSEG
+	hybridMagic = [magicLen]byte{'W', 'L', 'H', 'B', 'R', 'S', 'E', 'G'}
+	// hybridStreamMagic WLHBRSTR
+	hybridStreamMagic = [magicLen]byte{'W', 'L', 'H', 'B', 'R', 'S', 'T', 'R'}
 )
 
 // RsaHybridEncrypt use RSA-OAEP + AES-GCM to encrypt plaintext

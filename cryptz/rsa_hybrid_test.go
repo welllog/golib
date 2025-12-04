@@ -25,6 +25,25 @@ func TestRsaHybridEncryptDecrypt(t *testing.T) {
 	testz.Equal(t, str, string(dec))
 }
 
+func TestRsaHybridEncryptDecryptLarge(t *testing.T) {
+	plainText := make([]byte, 512*1024)
+
+	pub, err := ParseRsaPublicKey(pubKey)
+	testz.Nil(t, err)
+
+	prv, err := ParseRsaPrivateKey(prvKey)
+	testz.Nil(t, err)
+
+	enc, err := RsaHybridEncrypt(plainText, "", pub)
+	testz.Nil(t, err)
+
+	dec, err := RsaHybridDecrypt(enc, "", prv)
+	testz.Nil(t, err)
+
+	testz.Equal(t, len(plainText), len(dec))
+
+}
+
 func TestRsaHybridEncryptStreamTo(t *testing.T) {
 	pub, err := ParseRsaPublicKey(pubKey)
 	testz.Nil(t, err)
