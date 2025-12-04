@@ -6,10 +6,7 @@ import (
 	"bytes"
 	"crypto/cipher"
 	"crypto/ecdh"
-	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -482,80 +479,5 @@ func TestHPKEContext_Seal(t *testing.T) {
 		sctx.IncrementSeq()
 		rctx.IncrementSeq()
 	}
-
-}
-
-func TestDeriveKeys(t *testing.T) {
-	sharedSecret := []byte("shared secret")
-	info := []byte("context info")
-	mode := uint8(0)
-
-	buf1 := make([]byte, 256)
-	buf2 := make([]byte, 256)
-	key1, nonce1, err := deriveKeys1(buf1, sharedSecret, info, mode)
-	testz.Nil(t, err)
-
-	key2, nonce2, err := deriveKeys2(buf2, sharedSecret, info, mode)
-	testz.Nil(t, err)
-
-	fmt.Println(bytes.Equal(key1, key2))
-	fmt.Println(bytes.Equal(nonce1, nonce2))
-	fmt.Println(len(nonce1), len(nonce2))
-}
-
-func deriveKeys1(buf, sharedSecret, info []byte, mode uint8) (key, baseNonce []byte, err error) {
-	pskIDHash := make([]byte, 32)
-	// RFC 9180: secret = LabeledExtract(shared_secret, "secret", psk)
-	// For Base mode, psk is empty. shared_secret is the SALT, psk is the IKM!
-	secret := labeledExtract(buf[:0], nil, sharedSecret, labelSecret, nil)
-
-	// Create HMAC instance once and reuse it
-	mac := hmac.New(sha256.New, secret)
-
-	infoHash := labeledExtract(nil, nil, nil, labelInfoHash, info)
-
-	// KeySchedule Context: mode || psk_id_hash || info_hash
-	// Allocate fresh context to avoid overlap issues
-	context := make([]byte, 1+len(pskIDHash)+len(infoHash))
-	context[0] = mode
-	copy(context[1:], pskIDHash)
-	copy(context[1+len(pskIDHash):], infoHash)
-
-	// Allocate fresh key and nonce
-	key = labeledExpand(nil, mac, nil, labelKey, context, 16)
-	mac.Reset()
-	baseNonce = labeledExpand(nil, mac, nil, labelBaseNonce, context, 12)
-
-	return key, baseNonce, nil
-}
-
-func deriveKeys2(buf, sharedSecret, info []byte, mode uint8) (key, baseNonce []byte, err error) {
-	pskIDHash := make([]byte, 32)
-	// RFC 9180: secret = LabeledExtract(shared_secret, "secret", psk)
-	// For Base mode, psk is empty. shared_secret is the SALT, psk is the IKM!
-	secret := labeledExtract(buf[:0], nil, sharedSecret, labelSecret, nil)
-
-	// Create HMAC instance once and reuse it
-	mac := hmac.New(sha256.New, secret)
-
-	// KeySchedule Context: mode || psk_id_hash || info_hash
-	contextBegin := 16 + 12
-	contextEnd := contextBegin + 1 + len(pskIDHash) + sha256.Size
-	context := buf[contextBegin:contextEnd]
-	context[0] = mode
-	copy(context[1:], pskIDHash)
-	// info_hash = LabeledExtract(nil, suite_id, "info_hash", info)
-	// info_hash is written into context
-	labeledExtract(context[1+len(pskIDHash):1+len(pskIDHash)], nil, nil, labelInfoHash, info)
-
-	// Allocate fresh key and nonce
-	keyBuf := buf[:0]
-	key = labeledExpand(keyBuf, mac, nil, labelKey, context, 16)
-
-	mac.Reset()
-	nonceBuf := buf[16:16]
-	baseNonce = labeledExpand(nonceBuf, mac, nil, labelBaseNonce, context, 12)
-
-	return key, baseNonce, nil
 
 }
