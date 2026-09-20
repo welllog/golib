@@ -1,6 +1,7 @@
 package mathz
 
 import (
+	"math"
 	"testing"
 
 	"github.com/welllog/golib/testz"
@@ -424,7 +425,7 @@ func TestBinaryFloat64(t *testing.T) {
 	}
 }
 
-func TestMaxBitApprox(t *testing.T) {
+func TestHighestBit(t *testing.T) {
 	tests := []struct {
 		n    int
 		want int
@@ -446,11 +447,12 @@ func TestMaxBitApprox(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		testz.Equal(t, tt.want, HighestBit(tt.n), tt.n)
 		testz.Equal(t, tt.want, MaxBitApprox(tt.n), tt.n)
 	}
 }
 
-func TestMinBitApprox(t *testing.T) {
+func TestLowestBit(t *testing.T) {
 	tests := []struct {
 		n    int
 		want int
@@ -472,11 +474,12 @@ func TestMinBitApprox(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		testz.Equal(t, tt.want, LowestBit(tt.n), tt.n)
 		testz.Equal(t, tt.want, MinBitApprox(tt.n), tt.n)
 	}
 }
 
-func TestEnumToBitMask(t *testing.T) {
+func TestPackEnums(t *testing.T) {
 	tests := []struct {
 		nums []int
 		want int
@@ -495,11 +498,12 @@ func TestEnumToBitMask(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		testz.Equal(t, tt.want, PackEnums(tt.nums), tt.nums)
 		testz.Equal(t, tt.want, EnumToBitMask(tt.nums), tt.nums)
 	}
 }
 
-func TestBitMaskToEnum(t *testing.T) {
+func TestUnpackEnums(t *testing.T) {
 	tests := []struct {
 		mask int
 		want []int
@@ -515,11 +519,38 @@ func TestBitMaskToEnum(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		testz.Equal(t, tt.want, UnpackEnums(tt.mask), tt.mask)
 		testz.Equal(t, tt.want, BitMaskToEnum(tt.mask), tt.mask)
 	}
 }
 
-func TestBitMaskToPower2Enum(t *testing.T) {
+func TestContainsEnum(t *testing.T) {
+	tests := []struct {
+		bits int
+		enum int
+		want bool
+	}{
+		{bits: 0, enum: 1, want: false},
+		{bits: 0, enum: 0, want: false},
+		{bits: 0, enum: -1, want: false},
+		{bits: 1, enum: 1, want: true},
+		{bits: 1, enum: 2, want: false},
+		{bits: 7, enum: 1, want: true},
+		{bits: 7, enum: 2, want: true},
+		{bits: 7, enum: 3, want: true},
+		{bits: 7, enum: 4, want: false},
+		{bits: 10, enum: 2, want: true},
+		{bits: 10, enum: 4, want: true},
+		{bits: 10, enum: 1, want: false},
+	}
+
+	for _, tt := range tests {
+		testz.Equal(t, tt.want, ContainsEnum(tt.bits, tt.enum), tt)
+		testz.Equal(t, tt.want, BitMaskContains(tt.bits, tt.enum), tt)
+	}
+}
+
+func TestUnpackFlags(t *testing.T) {
 	tests := []struct {
 		mask int
 		want []int
@@ -535,6 +566,20 @@ func TestBitMaskToPower2Enum(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		testz.Equal(t, tt.want, UnpackFlags(tt.mask), tt.mask)
 		testz.Equal(t, tt.want, BitMaskToPower2Enum(tt.mask), tt.mask)
+	}
+}
+
+func TestSwap_SamePointer(t *testing.T) {
+	a := 5
+	Swap(&a, &a)
+	testz.Equal(t, 5, a)
+}
+
+func TestHaversine_Antipodal(t *testing.T) {
+	d := Haversine(10, 0, -10, 180)
+	if math.IsNaN(d) {
+		t.Fatalf("Haversine returned NaN for antipodal points")
 	}
 }

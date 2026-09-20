@@ -20,8 +20,16 @@ type RetryPolicy struct {
 	ShouldRetry RetryableFunc
 }
 
+// WithClient sets the HTTP client.
+func WithClient(client *http.Client) Option {
+	return func(c *Client) { c.client = client }
+}
+
+// WithHttpClient sets the HTTP client.
+//
+// Deprecated: Use WithClient instead.
 func WithHttpClient(hc *http.Client) Option {
-	return func(c *Client) { c.client = hc }
+	return WithClient(hc)
 }
 
 // WithRetryPolicy sets the retry policy.

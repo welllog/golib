@@ -4,10 +4,14 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"testing"
 )
 
-func Assert(t *testing.T, condition bool, msgAndArgs ...any) {
+type TestingT interface {
+	Helper()
+	Fatalf(format string, args ...any)
+}
+
+func Assert(t TestingT, condition bool, msgAndArgs ...any) {
 	t.Helper()
 
 	if !condition {
@@ -15,22 +19,24 @@ func Assert(t *testing.T, condition bool, msgAndArgs ...any) {
 	}
 }
 
-func Equal(t *testing.T, expected, actual any, msgAndArgs ...any) {
+func Equal(t TestingT, expected, actual any, msgAndArgs ...any) {
 	t.Helper()
 
 	if expected == nil && actual == nil {
 		return
 	}
 
-	// consider nil slice and empty slice to be equal
+	// consider nil slice and empty slice of the same type to be equal
 	if isSlice(expected) && isSlice(actual) {
 		expectedValue := reflect.ValueOf(expected)
 		actualValue := reflect.ValueOf(actual)
-		// Check if both are effectively empty (nil or length 0)
-		eIsNilOrEmpty := expectedValue.IsNil() || expectedValue.Len() == 0
-		aIsNilOrEmpty := actualValue.IsNil() || actualValue.Len() == 0
-		if eIsNilOrEmpty && aIsNilOrEmpty {
-			return
+		if expectedValue.Type() == actualValue.Type() {
+			// Check if both are effectively empty (nil or length 0)
+			eIsNilOrEmpty := expectedValue.IsNil() || expectedValue.Len() == 0
+			aIsNilOrEmpty := actualValue.IsNil() || actualValue.Len() == 0
+			if eIsNilOrEmpty && aIsNilOrEmpty {
+				return
+			}
 		}
 	}
 
@@ -53,7 +59,7 @@ func Equal(t *testing.T, expected, actual any, msgAndArgs ...any) {
 	}
 }
 
-func Nil(t *testing.T, actual any, msgAndArgs ...any) {
+func Nil(t TestingT, actual any, msgAndArgs ...any) {
 	t.Helper()
 
 	if actual != nil {
@@ -79,21 +85,21 @@ func isSlice(v any) bool {
 	return reflect.TypeOf(v).Kind() == reflect.Slice
 }
 
-func requireLog(t *testing.T, expected, actual any, msgAndArgs []any) {
+func requireLog(t TestingT, expected, actual any, msgAndArgs []any) {
 	t.Helper()
 	errLog(t, "expected: <%T> %v, actual: <%T> %v;", []any{
 		expected, expected, actual, actual,
 	}, msgAndArgs)
 }
 
-func invalidOpLog(t *testing.T, expected, actual any, msgAndArgs []any) {
+func invalidOpLog(t TestingT, expected, actual any, msgAndArgs []any) {
 	t.Helper()
 	errLog(t, "Invalid operation: %#v == %#v;", []any{
 		expected, actual,
 	}, msgAndArgs)
 }
 
-func errLog(t *testing.T, opLog string, assertArgs, msgAndArgs []any) {
+func errLog(t TestingT, opLog string, assertArgs, msgAndArgs []any) {
 	t.Helper()
 
 	args := make([]any, len(assertArgs), len(assertArgs)+len(msgAndArgs))

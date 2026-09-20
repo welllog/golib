@@ -76,6 +76,25 @@ func TestSet_Diff(t *testing.T) {
 	}
 }
 
+func TestSet_Union(t *testing.T) {
+	s := make(Set[int])
+	s.AddAll(0, 1)
+	s1 := make(Set[int])
+	s1.AddAll(1, 2)
+
+	s.Union(s1)
+	if len(s) != 3 || !s.Has(0) || !s.Has(1) || !s.Has(2) {
+		t.Fatal("union failed")
+	}
+
+	s2 := make(Set[int])
+	s2.AddAll(2, 3)
+	s.Merge(s2)
+	if len(s) != 4 || !s.Has(3) {
+		t.Fatal("merge failed")
+	}
+}
+
 func TestSet_Intersect(t *testing.T) {
 	s := make(Set[int])
 	s.AddAll(0, 1, 2, 3)

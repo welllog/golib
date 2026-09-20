@@ -6,8 +6,8 @@ type Slice[T any] struct {
 }
 
 // NewSlice returns a new heap with the given compare function.
-func NewSlice[T any](cap int, cmp func(T, T) bool) Slice[T] {
-	s := make([]T, 0, cap)
+func NewSlice[T any](capacity int, cmp func(T, T) bool) Slice[T] {
+	s := make([]T, 0, capacity)
 	return FromSlice(s, cmp)
 }
 

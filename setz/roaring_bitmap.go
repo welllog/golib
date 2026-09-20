@@ -136,6 +136,7 @@ func (i *RoaringBitmapIter) Next() bool {
 			return true
 		}
 
+		i.iter = nil
 		i.node = i.node.Next()
 	}
 

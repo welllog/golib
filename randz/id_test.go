@@ -73,3 +73,29 @@ func TestParseBase32(t *testing.T) {
 		testz.Equal(t, id, oid)
 	}
 }
+
+func TestParseBase32_Invalid(t *testing.T) {
+	for _, s := range []string{"A", "i", "l", "o", "q", " ", "!", "0A", "12 "} {
+		if _, err := ParseBase32([]byte(s)); err == nil {
+			t.Errorf("ParseBase32(%q) err = nil, want ErrInvalidBase32", s)
+		}
+	}
+}
+
+func TestBase32_Negative(t *testing.T) {
+	// ParseBase32 returns -1 on error; Base32 on such an id must not panic
+	testz.Equal(t, "", ID(-1).Base32())
+}
+
+func TestParseBase32_Overflow(t *testing.T) {
+	overflowCases := []string{
+		"8000000000000",
+		"zzzzzzzzzzzzz",
+		"10000000000000",
+	}
+	for _, s := range overflowCases {
+		if _, err := ParseBase32([]byte(s)); err == nil {
+			t.Errorf("ParseBase32(%q) expected error for overflow, got nil", s)
+		}
+	}
+}

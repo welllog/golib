@@ -76,11 +76,18 @@ func (s Set[T]) Filter(fn func(T) bool) {
 	}
 }
 
-// Merge adds all values in other to s.
-func (s Set[T]) Merge(other Set[T]) {
+// Union adds all values in other to s.
+func (s Set[T]) Union(other Set[T]) {
 	for k := range other {
 		s[k] = struct{}{}
 	}
+}
+
+// Merge adds all values in other to s.
+//
+// Deprecated: Use Union instead.
+func (s Set[T]) Merge(other Set[T]) {
+	s.Union(other)
 }
 
 // Diff deletes all values in s that are also in the other.

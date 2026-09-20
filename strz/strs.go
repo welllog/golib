@@ -86,9 +86,16 @@ func Rev(s string) string {
 	return string(runes)
 }
 
-// Len returns the number of runes in a string
-func Len(s string) int {
+// RuneCount returns the number of runes in a string.
+func RuneCount(s string) int {
 	return utf8.RuneCountInString(s)
+}
+
+// Len returns the number of runes in a string.
+//
+// Deprecated: Use RuneCount instead.
+func Len(s string) int {
+	return RuneCount(s)
 }
 
 // Sub return a substring of a string by start position and length.
@@ -134,8 +141,8 @@ func SubByDisplay(s string, length int) string {
 		return s
 	}
 
-	var dpl, end int
-	for _, v := range s {
+	var dpl int
+	for i, v := range s {
 		if v < utf8.RuneSelf {
 			dpl += 1
 		} else {
@@ -143,12 +150,10 @@ func SubByDisplay(s string, length int) string {
 		}
 
 		if dpl > length {
-			break
+			return s[:i]
 		}
-
-		end += utf8.RuneLen(v)
 	}
-	return s[:end]
+	return s
 }
 
 // RemoveRunes removes the specified characters from the string
@@ -183,6 +188,12 @@ func SnakeToCamelCase(str string, firstUp bool) string {
 	for i := 0; i < len(str); {
 		if b := str[i]; b < utf8.RuneSelf {
 			if firstUp {
+				if i > 0 && b == '_' {
+					i++
+					start = i
+					continue
+				}
+
 				firstUp = false
 
 				if b >= 'a' && b <= 'z' {

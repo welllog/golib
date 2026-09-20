@@ -294,3 +294,17 @@ func BenchmarkHeap_PushPop(b *testing.B) {
 		}
 	})
 }
+
+func TestHeap_Init_StaleHandle(t *testing.T) {
+	less := func(a, b int) bool { return a < b }
+	h := New[int](0, less)
+	e := h.Push(500)
+	h.Init([]int{1, 2, 3}, less)
+	h.Remove(e)
+	if h.Len() != 3 {
+		t.Fatalf("expected heap len 3 after removing stale handle, got %d", h.Len())
+	}
+	if h.Peek().Value != 1 {
+		t.Fatalf("expected minimum 1, got %d", h.Peek().Value)
+	}
+}

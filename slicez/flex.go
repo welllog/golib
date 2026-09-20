@@ -244,7 +244,7 @@ func (f *FlexSlice[T]) InsertAt(index int, values ...T) bool {
 		f.values = newValues
 		f.head = 0
 		f.len += size
-		f.tail = f.len
+		f.tail = f.len % newCap
 		return true
 	}
 

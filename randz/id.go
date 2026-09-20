@@ -3,6 +3,7 @@ package randz
 import (
 	srand "crypto/rand"
 	"errors"
+	"math"
 	"math/big"
 	"math/rand"
 	"strconv"
@@ -18,7 +19,7 @@ var decodeBase32Map [256]byte
 var ErrInvalidBase32 = errors.New("invalid base32")
 
 func init() {
-	for i := 0; i < len(encodeBase32Map); i++ {
+	for i := range decodeBase32Map {
 		decodeBase32Map[i] = 0xFF
 	}
 
@@ -105,6 +106,10 @@ func (f ID) Base2() string {
 
 // Base32 return the base32 string of id
 func (f ID) Base32() string {
+	if f < 0 {
+		// negative id (e.g. ParseBase32 error result) has no base32 representation
+		return ""
+	}
 
 	if f < 32 {
 		return string(encodeBase32Map[f])
@@ -131,12 +136,20 @@ func (f ID) Base36() string {
 
 // ParseBase32 parse the base32 string to id
 func ParseBase32(b []byte) (ID, error) {
+	if len(b) == 0 {
+		return -1, ErrInvalidBase32
+	}
 	var id int64
 	for i := range b {
-		if decodeBase32Map[b[i]] == 0xFF {
+		val := decodeBase32Map[b[i]]
+		if val == 0xFF {
 			return -1, ErrInvalidBase32
 		}
-		id = id*32 + int64(decodeBase32Map[b[i]])
+		digit := int64(val)
+		if id > (math.MaxInt64-digit)/32 {
+			return -1, ErrInvalidBase32
+		}
+		id = id*32 + digit
 	}
 
 	return ID(id), nil

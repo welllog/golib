@@ -11,7 +11,7 @@ import (
 
 const (
 	defaultLimit     = 3
-	defaultStackDeep = 32
+	defaultStackDepth = 32
 )
 
 type Limiter struct {
@@ -75,13 +75,13 @@ func (l *Limiter) Wait(waitTime ...time.Duration) {
 }
 
 func (l *Limiter) add() {
-	l.c <- struct{}{}
 	l.w.Add(1)
+	l.c <- struct{}{}
 }
 
 func (l *Limiter) done() {
-	l.w.Done()
 	<-l.c
+	l.w.Done()
 }
 
 func Recover(fn func(), panicFn func(any), cleanups ...func()) {
@@ -94,7 +94,7 @@ func Recover(fn func(), panicFn func(any), cleanups ...func()) {
 				buf.Grow(1024)
 
 				buf.WriteString(fmt.Sprintf("panic: %v  Traceback:", p))
-				stack(&buf, 4, defaultStackDeep)
+				stack(&buf, 4, defaultStackDepth)
 
 				fmt.Println(buf.String())
 			}
@@ -125,8 +125,8 @@ func Recover(fn func(), panicFn func(any), cleanups ...func()) {
 	fn()
 }
 
-func stack(buf *strings.Builder, skip, deep int) {
-	callers := make([]uintptr, deep)
+func stack(buf *strings.Builder, skip, depth int) {
+	callers := make([]uintptr, depth)
 	n := runtime.Callers(skip, callers)
 	frames := runtime.CallersFrames(callers[:n])
 	for {
@@ -145,13 +145,13 @@ type Logger interface {
 	Error(args ...any)
 }
 
-func LogPanic(l Logger, deep int) func(any) {
+func LogPanic(l Logger, depth int) func(any) {
 	return func(a any) {
 		var buf strings.Builder
 		buf.Grow(512)
 
 		buf.WriteString(fmt.Sprintf("panic: %v  Traceback:", a))
-		stack(&buf, 5, deep)
+		stack(&buf, 5, depth)
 
 		l.Error(buf.String())
 	}

@@ -224,6 +224,63 @@ func TestBits_Merge(t *testing.T) {
 	}
 }
 
+func TestBits_MergeExt(t *testing.T) {
+	// 1. 空合并非空，非空合并空
+	empty := Bitmap{}
+	nonEmpty := Bitmap{}
+	nonEmpty.Add(10)
+	nonEmpty.Add(200)
+
+	m1 := empty.Clone()
+	m1.Merge(nonEmpty)
+	testz.Equal(t, 2, m1.Len())
+	testz.Assert(t, m1.Contains(10))
+	testz.Assert(t, m1.Contains(200))
+
+	m2 := nonEmpty.Clone()
+	m2.Merge(empty)
+	testz.Equal(t, 2, m2.Len())
+	testz.Assert(t, m2.Contains(10))
+	testz.Assert(t, m2.Contains(200))
+
+	// 2. 小集合合并大集合（触发批量 append）
+	small := Bitmap{}
+	small.Add(1)
+	big := Bitmap{}
+	for i := uint(1000); i <= 1010; i++ {
+		big.Add(i)
+	}
+	small.Merge(big)
+	testz.Equal(t, 12, small.Len())
+	testz.Assert(t, small.Contains(1))
+	for i := uint(1000); i <= 1010; i++ {
+		testz.Assert(t, small.Contains(i))
+	}
+
+	// 3. 大集合合并小集合（不触发 append）
+	bigClone := big.Clone()
+	tiny := Bitmap{}
+	tiny.Add(2)
+	bigClone.Merge(tiny)
+	testz.Equal(t, 12, bigClone.Len())
+	testz.Assert(t, bigClone.Contains(2))
+
+	// 4. 自合并
+	selfMerge := small.Clone()
+	selfMerge.Merge(selfMerge)
+	testz.Equal(t, small.Len(), selfMerge.Len())
+
+	// 5. Bits 包装类型 Merge 测试
+	b1 := Bits{}
+	b1.Add(1)
+	b2 := Bits{}
+	b2.Add(2)
+	b1.Merge(b2)
+	testz.Equal(t, 2, b1.Len())
+	testz.Assert(t, b1.Contains(1))
+	testz.Assert(t, b1.Contains(2))
+}
+
 func BenchmarkBits_Add(b *testing.B) {
 	b.Run("add", func(b *testing.B) {
 		b.ReportAllocs()

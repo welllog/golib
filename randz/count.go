@@ -18,11 +18,14 @@ type rule struct {
 	intervalMaxIncr  int // max increase value per interval
 	quickNum         int
 	// like: last hour, max increase(1~2) per 10 seconds, reach 1 hour increase(1~100)
-	// rule{period: 3600, periodEndMaxIncr: 100, interval: 10, , intervalMaxIncr: 2}
+	// rule{period: 3600, periodEndMaxIncr: 100, interval: 10, intervalMaxIncr: 2}
 }
 
 // AddRule add count increase rule
 func (r *CountGenerator) AddRule(period, periodEndMaxIncr, interval, intervalMaxIncr int) {
+	if interval <= 0 {
+		panic("randz: interval must be positive")
+	}
 	r.rules = append(r.rules, rule{
 		period:           period,
 		periodEndMaxIncr: periodEndMaxIncr,
@@ -78,10 +81,18 @@ func (r *CountGenerator) Min(diff int) int {
 
 	var count, lastGradient int
 	for _, v := range r.rules {
-		if diff < v.period {
-			return (diff-lastGradient)/v.interval + count
+		minIncr := 1
+		if v.intervalMaxIncr == 0 {
+			minIncr = 0
 		}
-		count += (v.period-lastGradient)/v.interval + 1
+		if diff < v.period {
+			return (diff-lastGradient)/v.interval*minIncr + count
+		}
+		periodEndIncr := 1
+		if v.periodEndMaxIncr == 0 {
+			periodEndIncr = 0
+		}
+		count += (v.period-lastGradient)/v.interval*minIncr + periodEndIncr
 		lastGradient = v.period
 	}
 	return count

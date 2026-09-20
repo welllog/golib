@@ -139,7 +139,7 @@ func TestStdRemove1(t *testing.T) {
 	h.verify(t, 0)
 
 	for i := 0; h.Len() > 0; i++ {
-		x := Remove[int](h, 0).(int)
+		x := Remove[int](h, 0)
 		if x != i {
 			t.Errorf("Remove(0) got %d; want %d", x, i)
 		}
@@ -158,7 +158,7 @@ func TestStdRemove2(t *testing.T) {
 
 	m := make(map[int]bool)
 	for h.Len() > 0 {
-		m[Remove[int](h, (h.Len()-1)/2).(int)] = true
+		m[Remove[int](h, (h.Len()-1)/2)] = true
 		h.verify(t, 0)
 	}
 
@@ -197,5 +197,22 @@ func TestStdFix(t *testing.T) {
 		}
 		Fix[int](h, elem)
 		h.verify(t, 0)
+	}
+}
+
+func TestStdPopAndRemove_TypeInference(t *testing.T) {
+	h := new(myIntHeap)
+	Push[int](h, 10)
+	Push[int](h, 20)
+
+	// Direct assignment to int variable without any type assertion
+	var val int = Pop[int](h)
+	if val != 10 {
+		t.Errorf("Pop expected 10, got %d", val)
+	}
+
+	var rem int = Remove[int](h, 0)
+	if rem != 20 {
+		t.Errorf("Remove expected 20, got %d", rem)
 	}
 }

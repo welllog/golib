@@ -47,10 +47,17 @@ func (b *Bits) Intersect(other Bits) {
 	b.length = b.Bitmap.Len()
 }
 
-// Merge adds numbers in other to the set.
-func (b *Bits) Merge(other Bits) {
-	b.Bitmap.Merge(other.Bitmap)
+// Union adds numbers in other to the set.
+func (b *Bits) Union(other Bits) {
+	b.Bitmap.Union(other.Bitmap)
 	b.length = b.Bitmap.Len()
+}
+
+// Merge adds numbers in other to the set.
+//
+// Deprecated: Use Union instead.
+func (b *Bits) Merge(other Bits) {
+	b.Union(other)
 }
 
 // BitmapIter is an iterator for Bitmap.
@@ -212,15 +219,34 @@ func (b *Bitmap) Intersect(other Bitmap) {
 	}
 }
 
-// Merge adds numbers in other to the set.
-func (b *Bitmap) Merge(other Bitmap) {
-	for i := 0; i < len(other.set); i++ {
-		if i >= len(b.set) {
-			b.set = append(b.set, other.set[i])
-			continue
-		}
+// Union adds numbers in other to the set.
+//
+// Optimization Note (O2):
+// We split the operation into two stages:
+// 1. Bitwise OR on the overlapping prefix [0, minLen) in-place without allocations.
+// 2. Bulk append on the remaining tail [minLen, len(other.set)) using slice append(...).
+// This avoids invoking append element-by-element in a loop, minimizing slice reallocations
+// and leveraging runtime memmove for fast batch copying.
+func (b *Bitmap) Union(other Bitmap) {
+	minLen := len(b.set)
+	if len(other.set) < minLen {
+		minLen = len(other.set)
+	}
+
+	for i := 0; i < minLen; i++ {
 		b.set[i] |= other.set[i]
 	}
+
+	if len(other.set) > minLen {
+		b.set = append(b.set, other.set[minLen:]...)
+	}
+}
+
+// Merge adds numbers in other to the set.
+//
+// Deprecated: Use Union instead.
+func (b *Bitmap) Merge(other Bitmap) {
+	b.Union(other)
 }
 
 // Clone returns a copy of the set.

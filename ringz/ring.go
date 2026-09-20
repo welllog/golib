@@ -10,37 +10,41 @@ type Ring[T any] struct {
 }
 
 // New returns a new ring with the given capacity.
-func New[T any](cap int) Ring[T] {
+func New[T any](capacity int) Ring[T] {
 	var r Ring[T]
-	r.Init(cap)
+	r.Init(capacity)
 	return r
 }
 
 // Init initializes or clears the ring.
-func (r *Ring[T]) Init(cap int) {
-	if cap <= 0 {
-		panic("ringz.Ring Init: invalid capacity: " + strconv.Itoa(cap))
+func (r *Ring[T]) Init(capacity int) {
+	if capacity <= 0 {
+		panic("ringz.Ring Init: invalid capacity: " + strconv.Itoa(capacity))
 	}
 
-	r.values = make([]T, cap)
+	r.values = make([]T, capacity)
 	r.head = -1
 	r.tail = -1
-	r.cap = cap
+	r.cap = capacity
 }
 
 // IsEmpty returns true if the ring is empty.
 func (r *Ring[T]) IsEmpty() bool {
-	return r.head == -1
+	return r.cap == 0 || r.head == -1
 }
 
 // IsFull returns true if the ring is full.
 func (r *Ring[T]) IsFull() bool {
+	if r.cap == 0 {
+		return true
+	}
 	return (r.tail+1)%r.cap == r.head
 }
 
-// Push pushes the value to queue tail.
-func (r *Ring[T]) Push(value T) bool {
-	if r.IsFull() {
+// Enqueue adds a value to the queue tail.
+// Returns false if the ring is full.
+func (r *Ring[T]) Enqueue(value T) bool {
+	if r.cap == 0 || r.IsFull() {
 		return false
 	}
 
@@ -53,8 +57,15 @@ func (r *Ring[T]) Push(value T) bool {
 	return true
 }
 
-// Pop removes and returns the value from queue head.
-func (r *Ring[T]) Pop() (T, bool) {
+// Push pushes the value to queue tail.
+//
+// Deprecated: Use Enqueue instead.
+func (r *Ring[T]) Push(value T) bool {
+	return r.Enqueue(value)
+}
+
+// Dequeue removes and returns the value from queue head.
+func (r *Ring[T]) Dequeue() (T, bool) {
 	var zero T
 	if r.IsEmpty() {
 		return zero, false
@@ -71,6 +82,13 @@ func (r *Ring[T]) Pop() (T, bool) {
 	return value, true
 }
 
+// Pop removes and returns the value from queue head.
+//
+// Deprecated: Use Dequeue instead.
+func (r *Ring[T]) Pop() (T, bool) {
+	return r.Dequeue()
+}
+
 // Peek returns the value from queue head without removing it.
 func (r *Ring[T]) Peek() (T, bool) {
 	if r.IsEmpty() {
@@ -81,13 +99,22 @@ func (r *Ring[T]) Peek() (T, bool) {
 	return r.values[r.head], true
 }
 
-// PushWithGrow pushes the value to queue tail and expands the ring if it is full.
-func (r *Ring[T]) PushWithGrow(value T) {
-	if r.IsFull() {
+// EnqueueWithGrow adds the value to queue tail and expands the ring if it is full.
+func (r *Ring[T]) EnqueueWithGrow(value T) {
+	if r.cap == 0 {
+		r.Recap(2)
+	} else if r.IsFull() {
 		r.Recap(r.cap * 2)
 	}
 
-	r.Push(value)
+	r.Enqueue(value)
+}
+
+// PushWithGrow pushes the value to queue tail and expands the ring if it is full.
+//
+// Deprecated: Use EnqueueWithGrow instead.
+func (r *Ring[T]) PushWithGrow(value T) {
+	r.EnqueueWithGrow(value)
 }
 
 // Len returns the number of elements in the ring.
@@ -109,20 +136,20 @@ func (r *Ring[T]) Cap() int {
 }
 
 // Recap changes the capacity of the ring.
-func (r *Ring[T]) Recap(cap int) bool {
-	if cap <= 0 || cap == r.cap {
+func (r *Ring[T]) Recap(capacity int) bool {
+	if capacity <= 0 || capacity == r.cap {
 		return false
 	}
 
 	l := r.Len()
-	if cap < l {
+	if capacity < l {
 		return false
 	}
 
-	newValues := make([]T, cap)
+	newValues := make([]T, capacity)
 	if r.IsEmpty() {
 		r.values = newValues
-		r.cap = cap
+		r.cap = capacity
 		r.head = -1
 		r.tail = -1
 		return true
@@ -138,6 +165,6 @@ func (r *Ring[T]) Recap(cap int) bool {
 	r.head = 0
 	r.tail = l - 1
 	r.values = newValues
-	r.cap = cap
+	r.cap = capacity
 	return true
 }

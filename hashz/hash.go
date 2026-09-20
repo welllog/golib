@@ -114,9 +114,9 @@ func HmacToString[T, E typez.StrOrBytes](key T, data E, h func() hash.Hash) stri
 }
 
 // Md5Stream returns the MD5 checksum of the data.
-func Md5Stream(s io.Reader) ([]byte, error) {
+func Md5Stream(r io.Reader) ([]byte, error) {
 	h := md5.New()
-	_, err := io.Copy(h, s)
+	_, err := io.Copy(h, r)
 	if err != nil {
 		return nil, err
 	}
@@ -125,9 +125,9 @@ func Md5Stream(s io.Reader) ([]byte, error) {
 }
 
 // Sha1Stream returns the SHA-1 checksum of the data.
-func Sha1Stream(s io.Reader) ([]byte, error) {
+func Sha1Stream(r io.Reader) ([]byte, error) {
 	h := sha1.New()
-	_, err := io.Copy(h, s)
+	_, err := io.Copy(h, r)
 	if err != nil {
 		return nil, err
 	}
@@ -136,9 +136,9 @@ func Sha1Stream(s io.Reader) ([]byte, error) {
 }
 
 // Sha256Stream returns the SHA-256 checksum of the data.
-func Sha256Stream(s io.Reader) ([]byte, error) {
+func Sha256Stream(r io.Reader) ([]byte, error) {
 	h := sha256.New()
-	_, err := io.Copy(h, s)
+	_, err := io.Copy(h, r)
 	if err != nil {
 		return nil, err
 	}
@@ -147,9 +147,9 @@ func Sha256Stream(s io.Reader) ([]byte, error) {
 }
 
 // Sha224Stream returns the SHA-224 checksum of the data.
-func Sha224Stream(s io.Reader) ([]byte, error) {
+func Sha224Stream(r io.Reader) ([]byte, error) {
 	h := sha256.New224()
-	_, err := io.Copy(h, s)
+	_, err := io.Copy(h, r)
 	if err != nil {
 		return nil, err
 	}
@@ -158,9 +158,9 @@ func Sha224Stream(s io.Reader) ([]byte, error) {
 }
 
 // Sha384Stream returns the SHA-384 checksum of the data.
-func Sha384Stream(s io.Reader) ([]byte, error) {
+func Sha384Stream(r io.Reader) ([]byte, error) {
 	h := sha512.New384()
-	_, err := io.Copy(h, s)
+	_, err := io.Copy(h, r)
 	if err != nil {
 		return nil, err
 	}
@@ -169,9 +169,9 @@ func Sha384Stream(s io.Reader) ([]byte, error) {
 }
 
 // Sha512Stream returns the SHA-512 checksum of the data.
-func Sha512Stream(s io.Reader) ([]byte, error) {
+func Sha512Stream(r io.Reader) ([]byte, error) {
 	h := sha512.New()
-	_, err := io.Copy(h, s)
+	_, err := io.Copy(h, r)
 	if err != nil {
 		return nil, err
 	}

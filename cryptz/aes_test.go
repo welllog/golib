@@ -206,3 +206,48 @@ func TestAESCTRStreamEncryptDecrypt(t *testing.T) {
 	_ = os.Remove(fileName)
 	_ = os.Remove(fileName + ".enc")
 }
+
+func TestAES_OversizedAndInsufficientBufferContracts(t *testing.T) {
+	key := []byte("12345678901234567890123456789012") // 32 bytes
+	iv := []byte("1234567890123456")                  // 16 bytes
+	nonce := []byte("123456789012")                   // 12 bytes
+	plain := []byte("hello aes buffer contract test")
+
+	// 1. AESCBCEncrypt 传入非 16 对齐的超大 buffer（如 85 字节）
+	oversizedEncDst := make([]byte, 85)
+	err := AESCBCEncrypt(oversizedEncDst, plain, key, iv)
+	testz.Nil(t, err)
+
+	encLen := AESCBCEncryptLen(plain)
+	cipherData := oversizedEncDst[:encLen]
+
+	// 2. AESCBCDecrypt 传入超大 buffer（如 1024 字节，后部有脏数据）
+	oversizedDecDst := make([]byte, 1024)
+	for i := range oversizedDecDst {
+		oversizedDecDst[i] = 0xAA // 填充脏数据
+	}
+	n, err := AESCBCDecrypt(oversizedDecDst, cipherData, key, iv)
+	testz.Nil(t, err)
+	testz.Equal(t, len(plain), n)
+	testz.Equal(t, plain, oversizedDecDst[:n])
+
+	// 3. SaltBySecretCBCEncrypt 传入非 16 对齐的超大 buffer（如 99 字节）
+	encWithSalt, err := SaltBySecretCBCEncrypt(plain, "mysecret", make([]byte, 99))
+	testz.Nil(t, err)
+	decWithSalt, err := SaltBySecretCBCDecrypt(encWithSalt, "mysecret", false)
+	testz.Nil(t, err)
+	testz.Equal(t, plain, decWithSalt)
+
+	// 4. AESGCMEncrypt 传入容量不足的 buffer
+	tooSmallDst := make([]byte, 5)
+	err = AESGCMEncrypt(tooSmallDst, plain, key, nonce, nil)
+	testz.Assert(t, err != nil, "AESGCMEncrypt should fail when dst cap is insufficient")
+
+	// 5. AESGCMDecrypt 传入容量不足的 buffer
+	gcmEncDst := make([]byte, AESGCMEncryptLen(plain))
+	err = AESGCMEncrypt(gcmEncDst, plain, key, nonce, nil)
+	testz.Nil(t, err)
+
+	err = AESGCMDecrypt(tooSmallDst, gcmEncDst, key, nonce, nil)
+	testz.Assert(t, err != nil, "AESGCMDecrypt should fail when dst cap is insufficient")
+}

@@ -1387,6 +1387,8 @@ func TestValues(t *testing.T) {
 		t.Run(fmt.Sprintf("ss=%v", tc.ss), func(t *testing.T) {
 			got := Values(tc.fn, tc.ss...)
 			testz.Equal(t, tc.want, got)
+			gotMap := Map(tc.fn, tc.ss...)
+			testz.Equal(t, tc.want, gotMap)
 		})
 	}
 }

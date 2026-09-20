@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -469,9 +470,9 @@ func TestClient_doWithRetry(t *testing.T) {
 	})
 
 	t.Run("context canceled no retry", func(t *testing.T) {
-		attempts := 0
+		var attempts atomic.Int32
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			attempts++
+			attempts.Add(1)
 			time.Sleep(100 * time.Millisecond)
 			w.WriteHeader(http.StatusOK)
 		}))
@@ -493,15 +494,15 @@ func TestClient_doWithRetry(t *testing.T) {
 		}
 
 		// Should only try once because context cancellation should not be retried
-		if attempts > 1 {
-			t.Errorf("expected 1 attempt, got %d", attempts)
+		if attempts.Load() > 1 {
+			t.Errorf("expected 1 attempt, got %d", attempts.Load())
 		}
 	})
 
 	t.Run("GetBody error prevents retry", func(t *testing.T) {
-		attempts := 0
+		var attempts atomic.Int32
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			attempts++
+			attempts.Add(1)
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
 		defer server.Close()
@@ -513,7 +514,7 @@ func TestClient_doWithRetry(t *testing.T) {
 
 		req, _ := http.NewRequest(http.MethodPost, server.URL, bytes.NewBufferString("test"))
 		req.GetBody = func() (io.ReadCloser, error) {
-			if attempts > 1 {
+			if attempts.Load() > 1 {
 				return nil, errors.New("cannot recreate body")
 			}
 			return io.NopCloser(strings.NewReader("test")), nil
@@ -524,8 +525,96 @@ func TestClient_doWithRetry(t *testing.T) {
 			_ = resp.Body.Close()
 		}
 
-		if attempts != 2 {
-			t.Errorf("expected 2 attempts (stops when GetBody fails), got %d", attempts)
+		if attempts.Load() != 2 {
+			t.Errorf("expected 2 attempts (stops when GetBody fails), got %d", attempts.Load())
+		}
+	})
+
+	t.Run("backoff honors context cancellation", func(t *testing.T) {
+		var attempts atomic.Int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			attempts.Add(1)
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		client := NewClient(WithRetryPolicy(RetryPolicy{
+			MaxRetries:    3,
+			MinRetryDelay: 2 * time.Second,
+		}))
+
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+		begin := time.Now()
+		_, err := client.Do(req)
+		elapsed := time.Since(begin)
+
+		if err == nil {
+			t.Fatal("expected context deadline exceeded error")
+		}
+		if elapsed >= time.Second {
+			t.Errorf("Do blocked %v in backoff after ctx done, want < 1s", elapsed)
+		}
+		if attempts.Load() != 1 {
+			t.Errorf("expected 1 attempt, got %d", attempts.Load())
+		}
+	})
+
+	t.Run("backoff honors manual context cancel", func(t *testing.T) {
+		var attempts atomic.Int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			attempts.Add(1)
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		client := NewClient(WithRetryPolicy(RetryPolicy{
+			MaxRetries:    3,
+			MinRetryDelay: 3 * time.Second,
+		}))
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			cancel()
+		}()
+
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+		begin := time.Now()
+		_, err := client.Do(req)
+		elapsed := time.Since(begin)
+
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected context.Canceled error, got %v", err)
+		}
+		if elapsed >= time.Second {
+			t.Errorf("Do blocked %v in backoff after ctx cancel, want < 1s", elapsed)
+		}
+		if attempts.Load() != 1 {
+			t.Errorf("expected 1 attempt, got %d", attempts.Load())
+		}
+	})
+
+	t.Run("nil http client fallback to default", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+		}))
+		defer server.Close()
+
+		client := NewClient(WithHttpClient(nil))
+		req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("unexpected error with nil client: %v", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		body, _ := io.ReadAll(resp.Body)
+		if string(body) != "ok" {
+			t.Errorf("expected body 'ok', got %q", string(body))
 		}
 	})
 }

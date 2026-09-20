@@ -33,14 +33,14 @@ func (r *Reader[T]) Len() int {
 // Size returns the original length of the underlying string or byte slice.
 func (r *Reader[T]) Size() int64 { return int64(len(r.s)) }
 
-// Reset resets the Reader to be reading from s.
+// Read implements the io.Reader interface.
 func (r *Reader[T]) Read(p []byte) (n int, err error) {
 	if r.i >= int64(len(r.s)) {
 		return 0, io.EOF
 	}
 	n = copy(p, r.s[r.i:])
 	r.i += int64(n)
-	return
+	return n, nil
 }
 
 // ReadAt reads len(p) bytes from the Reader starting at byte offset off.
@@ -56,7 +56,7 @@ func (r *Reader[T]) ReadAt(b []byte, off int64) (n int, err error) {
 	if n < len(b) {
 		err = io.EOF
 	}
-	return
+	return n, err
 }
 
 // ReadByte reads and returns the next byte from the Reader.
@@ -93,7 +93,7 @@ func (r *Reader[T]) WriteTo(w io.Writer) (n int64, err error) {
 	if m != len(b) && err == nil {
 		err = io.ErrShortWrite
 	}
-	return
+	return n, err
 }
 
 // Close closes the Reader, preventing further reading.
