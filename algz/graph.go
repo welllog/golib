@@ -5,8 +5,8 @@ type Graph[T comparable] struct {
 }
 
 // Init initializes the graph with the given capacity.
-func (g *Graph[T]) Init(cap int) {
-	g.Nodes = make(map[T]map[T]struct{}, cap)
+func (g *Graph[T]) Init(capacity int) {
+	g.Nodes = make(map[T]map[T]struct{}, capacity)
 }
 
 // AddNode adds a node to the graph.
@@ -77,7 +77,7 @@ func (g *Graph[T]) BronKerbosch(R, P, X []T, cliques *[][]T) {
 
 	for _, v := range P {
 		neighbors := g.Nodes[v]
-		g.BronKerbosch(append(R, v), intersect(P, neighbors), intersect(X, neighbors), cliques)
+		g.BronKerbosch(append(R, v), intersect(P, neighbors, v), intersect(X, neighbors, v), cliques)
 
 		P = P[1:]
 		X = append(X, v)
@@ -121,9 +121,18 @@ func (g *Graph[T]) lazyInit() {
 	}
 }
 
-func intersect[T comparable](a []T, b map[T]struct{}) []T {
+func intersect[T comparable](a []T, b map[T]struct{}, exclude ...T) []T {
 	var ret []T
+	var hasExclude bool
+	var ex T
+	if len(exclude) > 0 {
+		hasExclude = true
+		ex = exclude[0]
+	}
 	for _, v := range a {
+		if hasExclude && v == ex {
+			continue
+		}
 		if _, ok := b[v]; ok {
 			ret = append(ret, v)
 		}

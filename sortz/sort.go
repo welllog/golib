@@ -71,31 +71,31 @@ func (o orderDescObj[T, K]) Less(i, j int) bool {
 }
 
 // Asc sorts the given slice in ascending order.
-func Asc[T typez.Ordered](a []T) {
-	sort.Sort(orderAsc[T](a))
+func Asc[T typez.Ordered](s []T) {
+	sort.Sort(orderAsc[T](s))
 }
 
 // Desc sorts the given slice in descending order.
-func Desc[T typez.Ordered](d []T) {
-	sort.Sort(orderDesc[T](d))
+func Desc[T typez.Ordered](s []T) {
+	sort.Sort(orderDesc[T](s))
 }
 
 // AscByKey sorts the given slice in ascending order by the key returned by keyFn.
-func AscByKey[T any, K typez.Ordered](a []T, keyFn func(T) K) {
-	sort.Sort(orderAscObj[T, K]{s: a, fn: keyFn})
+func AscByKey[T any, K typez.Ordered](s []T, keyFn func(T) K) {
+	sort.Sort(orderAscObj[T, K]{s: s, fn: keyFn})
 }
 
 // DescByKey sorts the given slice in descending order by the key returned by keyFn.
-func DescByKey[T any, K typez.Ordered](d []T, keyFn func(T) K) {
-	sort.Sort(orderDescObj[T, K]{s: d, fn: keyFn})
+func DescByKey[T any, K typez.Ordered](s []T, keyFn func(T) K) {
+	sort.Sort(orderDescObj[T, K]{s: s, fn: keyFn})
 }
 
 // AscStableByKey sorts the given slice in ascending order by the key returned by keyFn.
-func AscStableByKey[T any, K typez.Ordered](a []T, keyFn func(T) K) {
-	sort.Stable(orderAscObj[T, K]{s: a, fn: keyFn})
+func AscStableByKey[T any, K typez.Ordered](s []T, keyFn func(T) K) {
+	sort.Stable(orderAscObj[T, K]{s: s, fn: keyFn})
 }
 
 // DescStableByKey sorts the given slice in descending order by the key returned by keyFn.
-func DescStableByKey[T any, K typez.Ordered](d []T, keyFn func(T) K) {
-	sort.Stable(orderDescObj[T, K]{s: d, fn: keyFn})
+func DescStableByKey[T any, K typez.Ordered](s []T, keyFn func(T) K) {
+	sort.Stable(orderDescObj[T, K]{s: s, fn: keyFn})
 }

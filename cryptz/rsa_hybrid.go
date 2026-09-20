@@ -75,7 +75,7 @@ func RsaHybridEncrypt[T, D typez.StrOrBytes](plaintext T, ad D, pub *rsa.PublicK
 
 // RsaHybridDecrypt use RSA-OAEP + AES-GCM to decrypt ciphertext
 // The input ciphertext is expected to be base64 URL encoded
-func RsaHybridDecrypt[T, D typez.StrOrBytes](ciphertext T, ad D, prv *rsa.PrivateKey) ([]byte, error) {
+func RsaHybridDecrypt[T, D typez.StrOrBytes](ciphertext T, ad D, priv *rsa.PrivateKey) ([]byte, error) {
 	enc, err := strz.Base64Decode(ciphertext, base64.RawURLEncoding)
 	if err != nil {
 		return nil, err
@@ -87,14 +87,14 @@ func RsaHybridDecrypt[T, D typez.StrOrBytes](ciphertext T, ad D, prv *rsa.Privat
 
 	switch enc[magicLen] {
 	case 1:
-		return rsaHybridDecryptV1(enc, ad, prv)
+		return rsaHybridDecryptV1(enc, ad, priv)
 	default:
 		return nil, ErrInvalidCipherText
 	}
 }
 
-// RsaHybridEncryptStream encrypts data from stream and writes to dst using RSA-OAEP + AES-CTR
-func RsaHybridEncryptStream(dst io.Writer, stream io.Reader, pub *rsa.PublicKey) error {
+// RsaHybridEncryptStream encrypts data from src and writes to dst using RSA-OAEP + AES-CTR
+func RsaHybridEncryptStream(dst io.Writer, src io.Reader, pub *rsa.PublicKey) error {
 	// magic(8)|version(1)|iv(16)|encKeyLen(2)|encKey(encKeyLen)|cipherStream
 	var rb [keyLen + aes.BlockSize]byte
 	_, err := rand.Read(rb[:])
@@ -119,7 +119,7 @@ func RsaHybridEncryptStream(dst io.Writer, stream io.Reader, pub *rsa.PublicKey)
 	_, _ = w.Write(iv)
 	_, _ = w.Write(encKeyLenBytes)
 	_, _ = w.Write(encKey)
-	err = AESCTRStreamEncrypt(w, stream, aesKey, iv)
+	err = AESCTRStreamEncrypt(w, src, aesKey, iv)
 	if err != nil {
 		return err
 	}
@@ -127,11 +127,11 @@ func RsaHybridEncryptStream(dst io.Writer, stream io.Reader, pub *rsa.PublicKey)
 	return w.Flush()
 }
 
-// RsaHybridDecryptStream decrypts data from stream and writes to dst using RSA-OAEP + AES-CTR
-func RsaHybridDecryptStream(dst io.Writer, stream io.Reader, prv *rsa.PrivateKey) error {
+// RsaHybridDecryptStream decrypts data from src and writes to dst using RSA-OAEP + AES-CTR
+func RsaHybridDecryptStream(dst io.Writer, src io.Reader, priv *rsa.PrivateKey) error {
 	// magic(8)|version(1)|iv(16)|encKeyLen(2)|encKey(encKeyLen)|cipherStream
-	buf := make([]byte, aes.BlockSize+prv.Size()) // prv.Size min 128 bytes for 1024-bit key
-	r := bufio.NewReader(stream)
+	buf := make([]byte, aes.BlockSize+priv.Size()) // priv.Size min 128 bytes for 1024-bit key
+	r := bufio.NewReader(src)
 
 	_, err := io.ReadFull(r, buf[:encPrefixLen])
 	if err != nil {
@@ -155,7 +155,7 @@ func RsaHybridDecryptStream(dst io.Writer, stream io.Reader, prv *rsa.PrivateKey
 	buf = buf[aes.BlockSize:]
 
 	encKeyLen := int(binary.BigEndian.Uint16(buf[:encKeyLenLen]))
-	if encKeyLen <= 0 || encKeyLen > prv.Size() {
+	if encKeyLen <= 0 || encKeyLen > priv.Size() {
 		return fmt.Errorf("%w: %s", ErrInvalidCipherStream, "invalid header")
 	}
 	_, err = io.ReadFull(r, buf[:encKeyLen])
@@ -163,7 +163,7 @@ func RsaHybridDecryptStream(dst io.Writer, stream io.Reader, prv *rsa.PrivateKey
 		return fmt.Errorf("%w: %s", ErrInvalidCipherStream, err)
 	}
 
-	aesKey, err := rsa.DecryptOAEP(sha256.New(), nil, prv, buf[:encKeyLen], nil)
+	aesKey, err := rsa.DecryptOAEP(sha256.New(), nil, priv, buf[:encKeyLen], nil)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func RsaHybridDecryptStream(dst io.Writer, stream io.Reader, prv *rsa.PrivateKey
 	return AESCTRStreamDecrypt(dst, r, aesKey, iv)
 }
 
-func rsaHybridDecryptV1[D typez.StrOrBytes](enc []byte, ad D, prv *rsa.PrivateKey) ([]byte, error) {
+func rsaHybridDecryptV1[D typez.StrOrBytes](enc []byte, ad D, priv *rsa.PrivateKey) ([]byte, error) {
 	// magic(8)|version(1)|nonce(12)|encKeyLen(2)|encKey(encKeyLen)|cipherText|tag(16)
 	if len(enc) < hybridV1PrefixLen {
 		return nil, ErrInvalidCipherText
@@ -179,7 +179,7 @@ func rsaHybridDecryptV1[D typez.StrOrBytes](enc []byte, ad D, prv *rsa.PrivateKe
 
 	nonce := enc[encPrefixLen : encPrefixLen+nonceSize]
 	encKeyLen := int(binary.BigEndian.Uint16(enc[encPrefixLen+nonceSize : hybridV1PrefixLen]))
-	if encKeyLen <= 0 || encKeyLen > prv.Size() {
+	if encKeyLen <= 0 || encKeyLen > priv.Size() {
 		return nil, ErrInvalidCipherText
 	}
 
@@ -190,7 +190,7 @@ func rsaHybridDecryptV1[D typez.StrOrBytes](enc []byte, ad D, prv *rsa.PrivateKe
 	encKey := enc[hybridV1PrefixLen : hybridV1PrefixLen+encKeyLen]
 	encData := enc[hybridV1PrefixLen+encKeyLen:]
 
-	aesKey, err := rsa.DecryptOAEP(sha256.New(), nil, prv, encKey, nil)
+	aesKey, err := rsa.DecryptOAEP(sha256.New(), nil, priv, encKey, nil)
 	if err != nil {
 		return nil, err
 	}

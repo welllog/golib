@@ -8,6 +8,29 @@ import (
 	"time"
 )
 
+func TestWithClient(t *testing.T) {
+	t.Run("set custom http client", func(t *testing.T) {
+		customClient := &http.Client{
+			Timeout: 10 * time.Second,
+		}
+
+		client := NewClient(WithClient(customClient))
+		if client.client != customClient {
+			t.Error("expected custom http client to be set")
+		}
+		if client.client.Timeout != 10*time.Second {
+			t.Errorf("expected timeout 10s, got %v", client.client.Timeout)
+		}
+	})
+
+	t.Run("set nil http client", func(t *testing.T) {
+		client := NewClient(WithClient(nil))
+		if client.client != nil {
+			t.Error("expected http client to be nil")
+		}
+	})
+}
+
 func TestWithHttpClient(t *testing.T) {
 	t.Run("set custom http client", func(t *testing.T) {
 		customClient := &http.Client{

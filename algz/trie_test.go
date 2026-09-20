@@ -172,6 +172,14 @@ func TestTrie_ReplaceWithMask(t *testing.T) {
 			mask:     '*',
 			want:     "hell* w**ld",
 		},
+		{
+			// short patterns nested in a longer one produce overlapping scopes
+			name:     "case6",
+			patterns: []string{"2", "3", "1234567"},
+			text:     "x1234567y",
+			mask:     '*',
+			want:     "x*******y",
+		},
 	}
 
 	for _, tt := range tests {
@@ -230,6 +238,14 @@ func TestTrie_Replace(t *testing.T) {
 			text:     "hello world",
 			repl:     "it",
 			want:     "hellit wititld",
+		},
+		{
+			// short patterns nested in a longer one produce overlapping scopes
+			name:     "case6",
+			patterns: []string{"2", "3", "1234567"},
+			text:     "x1234567y",
+			repl:     "*",
+			want:     "x*y",
 		},
 	}
 
@@ -296,6 +312,43 @@ func TestTrie_PrefixSearch(t *testing.T) {
 			t.Errorf("expected %s, got %s", expect5[i], v)
 		}
 	}
+
+	// multi-byte runes: buffer must truncate at rune boundaries, no garbled output
+	trie2 := Trie{}
+	trie2.Insert("你好")
+	trie2.Insert("你坏")
+	trie2.Insert("你坏吧")
+	trie2.BuildFailureLinks()
+
+	ret6 := trie2.PrefixSearch("你")
+	expect6 := []string{"你好", "你坏", "你坏吧"}
+	if len(ret6) != len(expect6) {
+		t.Fatalf("expected %v, got %v", expect6, ret6)
+	}
+	for i, v := range ret6 {
+		if v != expect6[i] {
+			t.Errorf("expected %s, got %s", expect6[i], v)
+		}
+	}
+
+	// mixed ascii, 2-byte, 3-byte and 4-byte emoji
+	trie3 := Trie{}
+	trie3.Insert("go😀")
+	trie3.Insert("go😀🎉")
+	trie3.Insert("go世界")
+	trie3.Insert("golang")
+	trie3.BuildFailureLinks()
+
+	ret7 := trie3.PrefixSearch("go")
+	expect7 := []string{"go😀", "go😀🎉", "go世界", "golang"}
+	if len(ret7) != len(expect7) {
+		t.Fatalf("expected %v, got %v", expect7, ret7)
+	}
+	for i, v := range ret7 {
+		if v != expect7[i] {
+			t.Errorf("expected %s, got %s", expect7[i], v)
+		}
+	}
 }
 
 func TestTrie_FuzzySearch(t *testing.T) {
@@ -328,11 +381,7 @@ func TestTrie_FuzzySearch(t *testing.T) {
 
 	ret3 := trie.FuzzySearch("heyha")
 	expect3 := []string{"happy", "happiness"}
-	for i, v := range ret3 {
-		if v != expect3[i] {
-			t.Errorf("expected %s, got %s", expect3[i], v)
-		}
-	}
+	testz.Equal(t, expect3, ret3)
 
 	ret4 := trie.FuzzySearch("happa")
 	if len(ret4) != 0 {
@@ -342,6 +391,42 @@ func TestTrie_FuzzySearch(t *testing.T) {
 	ret5 := trie.FuzzySearch("i happa")
 	if len(ret5) != 0 {
 		t.Errorf("expected empty, got %v", ret5)
+	}
+
+	// multi-byte runes: buffer must truncate at rune boundaries, no garbled output
+	trie2 := Trie{}
+	trie2.Insert("好棒")
+	trie2.Insert("好棒啊")
+	trie2.Insert("好滴")
+	trie2.BuildFailureLinks()
+
+	ret6 := trie2.FuzzySearch("好好")
+	expect6 := []string{"好滴", "好棒", "好棒啊"}
+	if len(ret6) != len(expect6) {
+		t.Fatalf("expected %v, got %v", expect6, ret6)
+	}
+	for i, v := range ret6 {
+		if v != expect6[i] {
+			t.Errorf("expected %s, got %s", expect6[i], v)
+		}
+	}
+
+	// mixed unicode and emoji
+	trie3 := Trie{}
+	trie3.Insert("测试🎉")
+	trie3.Insert("测试🎉啊")
+	trie3.Insert("测试🚀")
+	trie3.BuildFailureLinks()
+
+	ret7 := trie3.FuzzySearch("测试")
+	expect7 := []string{"测试🚀", "测试🎉", "测试🎉啊"}
+	if len(ret7) != len(expect7) {
+		t.Fatalf("expected %v, got %v", expect7, ret7)
+	}
+	for i, v := range ret7 {
+		if v != expect7[i] {
+			t.Errorf("expected %s, got %s", expect7[i], v)
+		}
 	}
 }
 
@@ -531,4 +616,21 @@ func (ac *ahoCorasick) Match(text string) bool {
 		}
 	}
 	return false
+}
+
+func TestTrie_FuzzySearch_Mismatch(t *testing.T) {
+	trie := Trie{}
+	trie.Insert("happy")
+	trie.Insert("happiness")
+	trie.Insert("hello")
+	trie.Insert("hello world")
+	trie.BuildFailureLinks()
+
+	ret1 := trie.FuzzySearch("heyha")
+	expect1 := []string{"happy", "happiness"}
+	testz.Equal(t, expect1, ret1)
+
+	ret2 := trie.FuzzySearch("xhello")
+	expect2 := []string{"hello", "hello world"}
+	testz.Equal(t, expect2, ret2)
 }

@@ -329,34 +329,16 @@ func Utf16Parse(dst, src []byte) int {
 			continue
 		}
 
-		if n1 >= 0xd800 && n1 < 0xdc00 {
-			i += 6
-			if len(src)-i < 6 {
-				break
-			}
-
-			if src[i] != '\\' || src[i+1] != 'u' {
-				i++
-				continue
-			}
-
-			n2, j, ok := parseUint(src[i+2:i+6], 16, 16)
-			if !ok {
-				i += 2 + j
-				continue
-			}
-
-			if n2 >= 0xdc00 && n2 < 0xe000 {
+		if n1 < 0xdc00 && len(src)-i >= 12 && src[i+6] == '\\' && src[i+7] == 'u' {
+			if n2, _, ok := parseUint(src[i+8:i+12], 16, 16); ok && n2 >= 0xdc00 && n2 < 0xe000 {
 				r := utf16.DecodeRune(rune(n1), rune(n2))
 				e += utf8.EncodeRune(dst[e:], r)
-
-				i += 6
+				i += 12
 				f = i
 				continue
 			}
 		}
 
-		// English: n1 not satisfied skip current parse, n2 not satisfied skip again on the basis of if condition
 		i += 6
 	}
 

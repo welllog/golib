@@ -4,31 +4,31 @@ func swap[T any](s []T, i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-func fix[T any](s []T, cmp func(T, T) bool, swap func([]T, int, int), index, tail int) {
-	if !down(s, cmp, swap, index, tail) {
-		up(s, cmp, swap, index)
+func fix[T any](s []T, cmp func(T, T) bool, swapFn func([]T, int, int), index, tail int) {
+	if !down(s, cmp, swapFn, index, tail) {
+		up(s, cmp, swapFn, index)
 	}
 }
 
-func build[T any](s []T, cmp func(T, T) bool, swap func([]T, int, int)) {
+func build[T any](s []T, cmp func(T, T) bool, swapFn func([]T, int, int)) {
 	n := len(s)
 	for i := n/2 - 1; i >= 0; i-- {
-		down(s, cmp, swap, i, n)
+		down(s, cmp, swapFn, i, n)
 	}
 }
 
-func up[T any](s []T, cmp func(T, T) bool, swap func([]T, int, int), j int) {
+func up[T any](s []T, cmp func(T, T) bool, swapFn func([]T, int, int), j int) {
 	for {
 		i := (j - 1) / 2 // parent
 		if i == j || !cmp(s[j], s[i]) {
 			break
 		}
-		swap(s, i, j)
+		swapFn(s, i, j)
 		j = i
 	}
 }
 
-func down[T any](s []T, cmp func(T, T) bool, swap func([]T, int, int), i0, n int) bool {
+func down[T any](s []T, cmp func(T, T) bool, swapFn func([]T, int, int), i0, n int) bool {
 	i := i0
 	for {
 		j1 := 2*i + 1
@@ -42,7 +42,7 @@ func down[T any](s []T, cmp func(T, T) bool, swap func([]T, int, int), i0, n int
 		if !cmp(s[j], s[i]) {
 			break
 		}
-		swap(s, i, j)
+		swapFn(s, i, j)
 		i = j
 	}
 	return i > i0

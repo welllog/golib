@@ -303,6 +303,24 @@ func TestUtf16Format(t *testing.T) {
 	}
 }
 
+func TestUtf16Parse_IsolatedSurrogate(t *testing.T) {
+	// 孤立高位代理后面跟着普通 ASCII 转义
+	s1 := "\\uD83D\\u0068"
+	testz.Equal(t, "\\uD83Dh", Utf16ParseToString(s1))
+
+	// 孤立高位代理后面跟着合法的 emoji 代理对
+	s2 := "\\uD83D\\uD83D\\uDE04"
+	testz.Equal(t, "\\uD83D😄", Utf16ParseToString(s2))
+
+	// 孤立高位代理后面跟着非 \u 字符
+	s3 := "\\uD83Dhello"
+	testz.Equal(t, "\\uD83Dhello", Utf16ParseToString(s3))
+
+	// 孤立低位代理
+	s4 := "\\uDE04\\u0068"
+	testz.Equal(t, "\\uDE04h", Utf16ParseToString(s4))
+}
+
 func BenchmarkHexEncode(b *testing.B) {
 	s1 := "hello world, i love programming, i coding in golang"
 	s2 := []byte("what will happen in the future, i don't know")

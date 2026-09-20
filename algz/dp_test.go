@@ -314,3 +314,12 @@ func TestFindDpSolvers(t *testing.T) {
 		}
 	}
 }
+
+func TestFindDpSolvers_Determinism(t *testing.T) {
+	for i := 0; i < 200; i++ {
+		dp := FindDpSolvers(7, []int{6, 8}, func(x int) int { return x }, true)
+		if _, ok := dp[14]; ok {
+			t.Fatalf("iteration %d: dp should not contain non-minimal overflow 14", i)
+		}
+	}
+}

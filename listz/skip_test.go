@@ -202,6 +202,27 @@ func TestSkipList_RangeWithStart(t *testing.T) {
 		}
 		return false
 	})
+
+	// zero value skip list is usable, should not panic
+	var empty SkipList[string, int]
+	empty.RangeWithStart("a", func(key string, val int) bool {
+		t.Fatal("range should not be called on empty list")
+		return true
+	})
+	empty.RangeWithRange("a", "z", func(key string, val int) bool {
+		t.Fatal("range should not be called on empty list")
+		return true
+	})
+
+	var emptyCmp SkipListWithCmp[string, int]
+	emptyCmp.RangeWithStart("a", func(key string, val int) bool {
+		t.Fatal("range should not be called on empty list")
+		return true
+	})
+	emptyCmp.RangeWithRange("a", "z", func(key string, val int) bool {
+		t.Fatal("range should not be called on empty list")
+		return true
+	})
 }
 
 func TestSkipList_RangeWithRange(t *testing.T) {

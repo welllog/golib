@@ -263,3 +263,112 @@ func TestHPKE_RFC9180_Interoperability(t *testing.T) {
 	t.Log("")
 	t.Log("Info parameter: \"Ode on a Grecian Urn\" (RFC 9180 standard)")
 }
+
+// TestHPKE_RFC9180_P521_DHKEM validates DHKEM(P-521, HKDF-SHA512) against the
+// official RFC 9180 Appendix A.6.1 test vector.
+//
+// The A.6 vectors use the full ciphersuite (HKDF-SHA512 KDF + AES-256-GCM),
+// whereas this library fixes the key schedule to HKDF-SHA256 + AES-128-GCM,
+// so the single-shot Open() cannot be used here. Instead the KEM
+// ExtractAndExpand step is exercised directly and its shared_secret output
+// is compared against the official vector, which validates the SHA-512
+// DHKEM path (Nsecret=64) for interop.
+//
+// Note: RFC 9180 provides no P-384 vectors (Appendix A.4 uses
+// DHKEM(P-256, HKDF-SHA256) with a different KDF); P-384 shares the
+// non-SHA256 KEM code path covered by this test with different constants.
+func TestHPKE_RFC9180_P521_DHKEM(t *testing.T) {
+	hpke := NewHPKE(ecdh.P521())
+
+	// Test vector from RFC 9180 A.6.1 - Base Setup Information
+	skRmHex := "01462680369ae375e4b3791070a7458ed527842f6a98a79ff5e0d4cbde83c27196a3916956655523a6a2556a7af62c5cadabe2ef9da3760bb21e005202f7b2462847"
+	pkRmHex := "0401b45498c1714e2dce167d3caf162e45e0642afc7ed435df7902ccae0e84ba0f7d373f646b7738bbbdca11ed91bdeae3cdcba3301f2457be452f271fa6837580e661012af49583a62e48d44bed350c7118c0d8dc861c238c72a2bda17f64704f464b57338e7f40b60959480c0e58e6559b190d81663ed816e523b6b6a418f66d2451ec64"
+	encHex := "040138b385ca16bb0d5fa0c0665fbbd7e69e3ee29f63991d3e9b5fa740aab8900aaeed46ed73a49055758425a0ce36507c54b29cc5b85a5cee6bae0cf1c21f2731ece2013dc3fb7c8d21654bb161b463962ca19e8c654ff24c94dd2898de12051f1ed0692237fb02b2f8d1dc1c73e9b366b529eb436e98a996ee522aef863dd5739d2f29b0"
+	sharedSecretHex := "776ab421302f6eff7d7cb5cb1adaea0cd50872c71c2d63c30c4f1d5e43653336fef33b103c67e7a98add2d3b66e2fda95b5b2a667aa9dac7e59cc1d46d30e818"
+
+	skRm, _ := hex.DecodeString(skRmHex)
+	pkRm, _ := hex.DecodeString(pkRmHex)
+	enc, _ := hex.DecodeString(encHex)
+	wantShared, _ := hex.DecodeString(sharedSecretHex)
+
+	recvPrv, err := ecdh.P521().NewPrivateKey(skRm)
+	if err != nil {
+		t.Fatalf("Failed to create receiver private key: %v", err)
+	}
+	ephPub, err := ecdh.P521().NewPublicKey(enc)
+	if err != nil {
+		t.Fatalf("Failed to create ephemeral public key: %v", err)
+	}
+
+	// dh = DH(skR, pkE), kem_context = enc || pkRm
+	dh, err := recvPrv.ECDH(ephPub)
+	if err != nil {
+		t.Fatalf("ECDH failed: %v", err)
+	}
+
+	kemContext := append(append([]byte{}, enc...), pkRm...)
+	buf := make([]byte, hpke.KEMSecretLen())
+	shared := hpke.extractAndExpandDHKEM(buf, dh, kemContext)
+
+	if !bytes.Equal(shared, wantShared) {
+		t.Errorf("P-521 Base DHKEM shared_secret mismatch\nGot:  %x\nWant: %x", shared, wantShared)
+		return
+	}
+
+	t.Log("✓ Successfully validated RFC 9180 A.6.1 P-521 Base DHKEM shared_secret")
+}
+
+// TestHPKE_RFC9180_P521_DHKEM_Auth validates the DHKEM(P-521, HKDF-SHA512)
+// Auth mode (dh = DH(skR, pkE) || DH(skR, pkS)) against the official
+// RFC 9180 Appendix A.6.3 test vector.
+func TestHPKE_RFC9180_P521_DHKEM_Auth(t *testing.T) {
+	hpke := NewHPKE(ecdh.P521())
+
+	// Test vector from RFC 9180 A.6.3 - Auth Setup Information
+	skRmHex := "013ef326940998544a899e15e1726548ff43bbdb23a8587aa3bef9d1b857338d87287df5667037b519d6a14661e9503cfc95a154d93566d8c84e95ce93ad05293a0b"
+	pkRmHex := "04007d419b8834e7513d0e7cc66424a136ec5e11395ab353da324e3586673ee73d53ab34f30a0b42a92d054d0db321b80f6217e655e304f72793767c4231785c4a4a6e008f31b93b7a4f2b8cd12e5fe5a0523dc71353c66cbdad51c86b9e0bdfcd9a45698f2dab1809ab1b0f88f54227232c858accc44d9a8d41775ac026341564a2d749f4"
+	pkSmHex := "04015cc3636632ea9a3879e43240beae5d15a44fba819282fac26a19c989fafdd0f330b8521dff7dc393101b018c1e65b07be9f5fc9a28a1f450d6a541ee0d76221133001e8f0f6a05ab79f9b9bb9ccce142a453d59c5abebb5674839d935a3ca1a3fbc328539a60b3bc3c05fed22838584a726b9c176796cad0169ba4093332cbd2dc3a9f"
+	encHex := "04017de12ede7f72cb101dab36a111265c97b3654816dcd6183f809d4b3d111fe759497f8aefdc5dbb40d3e6d21db15bdc60f15f2a420761bcaeef73b891c2b117e9cf01e29320b799bbc86afdc5ea97d941ea1c5bd5ebeeac7a784b3bab524746f3e640ec26ee1bd91255f9330d974f845084637ee0e6fe9f505c5b87c86a4e1a6c3096dd"
+	sharedSecretHex := "26648fa2a2deb0bfc56349a590fd4cb7108a51797b634694fc02061e8d91b3576ac736a68bf848fe2a58dfb1956d266e68209a4d631e513badf8f4dcfc00f30a"
+
+	skRm, _ := hex.DecodeString(skRmHex)
+	pkRm, _ := hex.DecodeString(pkRmHex)
+	pkSm, _ := hex.DecodeString(pkSmHex)
+	enc, _ := hex.DecodeString(encHex)
+	wantShared, _ := hex.DecodeString(sharedSecretHex)
+
+	recvPrv, err := ecdh.P521().NewPrivateKey(skRm)
+	if err != nil {
+		t.Fatalf("Failed to create receiver private key: %v", err)
+	}
+	ephPub, err := ecdh.P521().NewPublicKey(enc)
+	if err != nil {
+		t.Fatalf("Failed to create ephemeral public key: %v", err)
+	}
+	sendPub, err := ecdh.P521().NewPublicKey(pkSm)
+	if err != nil {
+		t.Fatalf("Failed to create sender public key: %v", err)
+	}
+
+	// dh = DH(skR, pkE) || DH(skR, pkS), kem_context = enc || pkRm || pkSm
+	dh1, err := recvPrv.ECDH(ephPub)
+	if err != nil {
+		t.Fatalf("ECDH(skR, pkE) failed: %v", err)
+	}
+	dh2, err := recvPrv.ECDH(sendPub)
+	if err != nil {
+		t.Fatalf("ECDH(skR, pkS) failed: %v", err)
+	}
+	dh := append(append([]byte{}, dh1...), dh2...)
+
+	kemContext := append(append(append([]byte{}, enc...), pkRm...), pkSm...)
+	buf := make([]byte, hpke.KEMSecretLen())
+	shared := hpke.extractAndExpandDHKEM(buf, dh, kemContext)
+
+	if !bytes.Equal(shared, wantShared) {
+		t.Errorf("P-521 Auth DHKEM shared_secret mismatch\nGot:  %x\nWant: %x", shared, wantShared)
+		return
+	}
+
+	t.Log("✓ Successfully validated RFC 9180 A.6.3 P-521 Auth DHKEM shared_secret")
+}

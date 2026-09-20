@@ -73,9 +73,12 @@ func (c *Client) DoWithoutRetry(req *http.Request) (*http.Response, error) {
 // Request
 // body supports string, []byte, io.Reader, and other types serialized through codec
 func (c *Client) Request(ctx context.Context, method, path string, headers map[string]string, body, out any,
-	codec Codec) (err error) {
+	codec Codec) error {
 
-	var req *http.Request
+	var (
+		req *http.Request
+		err error
+	)
 	if body == nil {
 		req, err = http.NewRequestWithContext(ctx, method, path, nil)
 	} else {
@@ -165,10 +168,26 @@ func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Resp
 				resp.Body.Close()
 			}
 
-			backoff := retryPolicy.MinRetryDelay * time.Duration(1<<uint(attempt-1))
+			shift := uint(attempt - 1)
+			if shift > 30 {
+				shift = 30
+			}
+			backoff := retryPolicy.MinRetryDelay * time.Duration(1<<shift)
 
 			if backoff > 0 {
-				time.Sleep(backoff)
+				timer := time.NewTimer(backoff)
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					return nil, ctx.Err()
+				case <-timer.C:
+				}
+			} else {
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				default:
+				}
 			}
 		}
 
@@ -182,5 +201,9 @@ func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Resp
 }
 
 func (c *Client) do(ctx context.Context, req *http.Request) (*http.Response, error) {
-	return c.client.Do(req.WithContext(ctx))
+	client := c.client
+	if client == nil {
+		client = http.DefaultClient
+	}
+	return client.Do(req.WithContext(ctx))
 }

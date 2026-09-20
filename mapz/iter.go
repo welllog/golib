@@ -8,12 +8,12 @@ import "iter"
 func (s *SafeKV[K, V]) All() iter.Seq2[K, V] {
 	return func(yield func(K, V) bool) {
 		s.mu.RLock()
+		defer s.mu.RUnlock()
 		for k, v := range s.entries {
 			if !yield(k, v) {
 				break
 			}
 		}
-		s.mu.RUnlock()
 	}
 }
 
@@ -21,7 +21,7 @@ func (s *SafeKV[K, V]) All() iter.Seq2[K, V] {
 func (b Body) All() iter.Seq2[string, any] {
 	return func(yield func(string, any) bool) {
 		for k, v := range b {
-			if k == _HIDDEN_KEY {
+			if k == hiddenKey {
 				continue
 			}
 

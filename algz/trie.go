@@ -65,11 +65,11 @@ func (t *Trie) BuildFailureLinks() {
 
 	for i := range t.root.children {
 		t.root.children[i].node.fail = &t.root
-		queue.Push(t.root.children[i].node)
+		queue.enqueue(t.root.children[i].node)
 	}
 
 	for !queue.IsEmpty() {
-		curr := queue.Pop()
+		curr := queue.dequeue()
 		for _, child := range curr.children {
 			failNode := curr.fail
 			var idx int
@@ -203,8 +203,9 @@ func (t *Trie) PrefixSearch(key string) []string {
 	if node.isEnd {
 		ret = append(ret, key)
 	}
+	pLen := buf.Len()
 	for _, ch := range node.children {
-		stack = append(stack, trieFrame{ch.val, 0, ch.node})
+		stack = append(stack, trieFrame{ch.val, pLen, ch.node})
 	}
 
 	for len(stack) > 0 {
@@ -212,23 +213,15 @@ func (t *Trie) PrefixSearch(key string) []string {
 		cur := stack[last]
 		stack = stack[:last]
 
+		buf.Truncate(cur.bufLen)
 		buf.WriteRune(cur.r)
 		if cur.node.isEnd {
 			ret = append(ret, buf.String())
 		}
 
-		if len(cur.node.children) == 0 {
-			if len(stack) == 0 {
-				break
-			}
-
-			back := int(cur.depth + 1 - stack[last-1].depth)
-			buf.Truncate(buf.Len() - back)
-			continue
-		}
-
+		pLen = buf.Len()
 		for _, child := range cur.node.children {
-			stack = append(stack, trieFrame{child.val, cur.depth + 1, child.node})
+			stack = append(stack, trieFrame{child.val, pLen, child.node})
 		}
 	}
 
@@ -250,7 +243,8 @@ func (t *Trie) FuzzySearch(key string) []string {
 		}
 
 		if idx < 0 {
-			return nil
+			node = &t.root
+			continue
 		}
 
 		node = node.children[idx].node
@@ -273,8 +267,9 @@ func (t *Trie) FuzzySearch(key string) []string {
 		if node.isEnd {
 			ret = append(ret, key[len(key)-node.size:])
 		}
+		pLen := buf.Len()
 		for _, ch := range node.children {
-			stack = append(stack, trieFrame{ch.val, 0, ch.node})
+			stack = append(stack, trieFrame{ch.val, pLen, ch.node})
 		}
 
 		for len(stack) > 0 {
@@ -282,23 +277,15 @@ func (t *Trie) FuzzySearch(key string) []string {
 			cur := stack[last]
 			stack = stack[:last]
 
+			buf.Truncate(cur.bufLen)
 			buf.WriteRune(cur.r)
 			if cur.node.isEnd {
 				ret = append(ret, buf.String())
 			}
 
-			if len(cur.node.children) == 0 {
-				if len(stack) == 0 {
-					break
-				}
-
-				back := int(cur.depth + 1 - stack[last-1].depth)
-				buf.Truncate(buf.Len() - back)
-				continue
-			}
-
+			pLen = buf.Len()
 			for _, child := range cur.node.children {
-				stack = append(stack, trieFrame{child.val, cur.depth + 1, child.node})
+				stack = append(stack, trieFrame{child.val, pLen, child.node})
 			}
 		}
 
@@ -320,6 +307,10 @@ func (t *Trie) mergeScopes(sp *[]scope) {
 				scopes[i].start = scopes[i+1].start
 			}
 			scopes = append(scopes[:i+1], scopes[i+2:]...)
+			// the merged scope may now overlap the previous one
+			if i > 0 {
+				i--
+			}
 		} else {
 			i++
 		}
@@ -399,9 +390,9 @@ func decodeRune(s string, i int) (rune, int) {
 }
 
 type trieFrame struct {
-	r     rune
-	depth int32
-	node  *trieNode
+	r      rune
+	bufLen int
+	node   *trieNode
 }
 
 type trieNodeQueue struct {
@@ -411,9 +402,9 @@ type trieNodeQueue struct {
 	cap   uint32
 }
 
-func (q *trieNodeQueue) Init(cap int) {
-	q.nodes = make([]*trieNode, cap)
-	q.cap = uint32(cap)
+func (q *trieNodeQueue) Init(capacity int) {
+	q.nodes = make([]*trieNode, capacity)
+	q.cap = uint32(capacity)
 }
 
 func (q *trieNodeQueue) IsFull() bool {
@@ -424,7 +415,7 @@ func (q *trieNodeQueue) IsEmpty() bool {
 	return q.head == q.tail
 }
 
-func (q *trieNodeQueue) Push(node *trieNode) {
+func (q *trieNodeQueue) enqueue(node *trieNode) {
 	if q.IsFull() {
 		tailPos := (q.tail - 1) % q.cap
 		headPos := q.head % q.cap
@@ -446,7 +437,11 @@ func (q *trieNodeQueue) Push(node *trieNode) {
 	q.tail++
 }
 
-func (q *trieNodeQueue) Pop() *trieNode {
+func (q *trieNodeQueue) Push(node *trieNode) {
+	q.enqueue(node)
+}
+
+func (q *trieNodeQueue) dequeue() *trieNode {
 	if q.IsEmpty() {
 		return nil
 	}
@@ -454,6 +449,10 @@ func (q *trieNodeQueue) Pop() *trieNode {
 	node := q.nodes[q.head%q.cap]
 	q.head++
 	return node
+}
+
+func (q *trieNodeQueue) Pop() *trieNode {
+	return q.dequeue()
 }
 
 func (q *trieNodeQueue) Len() int {

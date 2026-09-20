@@ -53,9 +53,11 @@ func Decrypt[T, E typez.StrOrBytes](cipherText T, secret E) ([]byte, error) {
 	return SaltBySecretCBCDecrypt(enc, secret, true)
 }
 
-// GCMEncrypt encrypts plainText with secret and additionalData
-// This is not enough secure for high security requirements.
-// Use PasswordEncrypt instead.
+// GCMEncrypt encrypts plainText with secret and additionalData.
+//
+// Deprecated: GCMEncrypt uses an 8-byte salt for both key and nonce derivation via MD5,
+// which has birthday collision risks (nonce reuse) when encrypting large volumes with the same secret.
+// Use PasswordEncrypt instead for higher security and compliance with modern standards.
 func GCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D) ([]byte, error) {
 	encLen := aes.BlockSize + AESGCMEncryptLen(plainText)
 	hexEncLen := hex.EncodedLen(encLen)
@@ -72,8 +74,9 @@ func GCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData 
 	return ret, nil
 }
 
-// GCMDecrypt decrypts cipherText with secret and additionalData
-// This is not enough secure for high security requirements.
+// GCMDecrypt decrypts cipherText with secret and additionalData.
+//
+// Deprecated: GCMDecrypt corresponds to GCMEncrypt, which has birthday collision risks.
 // Use PasswordDecrypt instead.
 func GCMDecrypt[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalData D) ([]byte, error) {
 	enc, err := strz.HexDecode(cipherText)
@@ -84,8 +87,8 @@ func GCMDecrypt[T, E, D typez.StrOrBytes](cipherText T, secret E, additionalData
 	return SaltBySecretGCMDecrypt(enc, secret, additionalData, true)
 }
 
-// EncryptStreamTo encrypts stream to dst with secret
-func EncryptStreamTo[E typez.StrOrBytes](dst io.Writer, stream io.Reader, secret E) error {
+// EncryptStreamTo encrypts src to dst with secret
+func EncryptStreamTo[E typez.StrOrBytes](dst io.Writer, src io.Reader, secret E) error {
 	var salt [saltLen]byte
 	var cred [credLen]byte
 	err := fillSaltAndCred(salt[:], cred[:], secret)
@@ -106,14 +109,14 @@ func EncryptStreamTo[E typez.StrOrBytes](dst io.Writer, stream io.Reader, secret
 		return fmt.Errorf("write header error: %w", err)
 	}
 
-	return AESCTRStreamEncrypt(dst, stream, key, iv)
+	return AESCTRStreamEncrypt(dst, src, key, iv)
 }
 
-// DecryptStreamTo decrypts stream to dst with secret
-func DecryptStreamTo[E typez.StrOrBytes](dst io.Writer, stream io.Reader, secret E) error {
+// DecryptStreamTo decrypts src to dst with secret
+func DecryptStreamTo[E typez.StrOrBytes](dst io.Writer, src io.Reader, secret E) error {
 	saltHeader := make([]byte, aes.BlockSize)
 
-	_, err := io.ReadFull(stream, saltHeader)
+	_, err := io.ReadFull(src, saltHeader)
 	if err != nil {
 		return fmt.Errorf("read header error: %w", err)
 	}
@@ -128,10 +131,11 @@ func DecryptStreamTo[E typez.StrOrBytes](dst io.Writer, stream io.Reader, secret
 	key := cred[:keyLen] // 32 bytes, 256 / 8
 	iv := cred[keyLen:]
 
-	return AESCTRStreamDecrypt(dst, stream, key, iv)
+	return AESCTRStreamDecrypt(dst, src, key, iv)
 }
 
 // SaltBySecretCBCEncrypt
+// buf with sufficient cap is reused as output; bytes in [len(buf), cap(buf)) may be overwritten.
 func SaltBySecretCBCEncrypt[T, E typez.StrOrBytes](plainText T, secret E, buf []byte) ([]byte, error) {
 	var salt [saltLen]byte
 	var cred [credLen]byte
@@ -148,8 +152,10 @@ func SaltBySecretCBCEncrypt[T, E typez.StrOrBytes](plainText T, secret E, buf []
 	*/
 	enc := buf
 	encLen := aes.BlockSize + AESCBCEncryptLen(plainText)
-	if len(buf) < encLen {
+	if cap(buf) < encLen {
 		enc = make([]byte, encLen)
+	} else {
+		enc = buf[:encLen]
 	}
 	copy(enc[0:], fixedSaltHeader)
 	copy(enc[8:], salt[:])
@@ -193,6 +199,9 @@ func SaltBySecretCBCDecrypt[E typez.StrOrBytes](cipherText []byte, secret E, reu
 }
 
 // SaltBySecretGCMEncrypt
+// buf with sufficient cap is reused as output; bytes in [len(buf), cap(buf)) may be overwritten.
+//
+// Deprecated: uses 8-byte salt for key and nonce derivation. Use PasswordEncrypt instead.
 func SaltBySecretGCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, additionalData D, buf []byte) ([]byte, error) {
 	var salt [saltLen]byte
 	var cred [credLen]byte
@@ -209,8 +218,10 @@ func SaltBySecretGCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, add
 	*/
 	enc := buf
 	encLen := aes.BlockSize + AESGCMEncryptLen(plainText)
-	if len(buf) < encLen {
+	if cap(buf) < encLen {
 		enc = make([]byte, encLen)
+	} else {
+		enc = buf[:encLen]
 	}
 	copy(enc[0:], fixedSaltHeader)
 	copy(enc[8:], salt[:])
@@ -230,6 +241,8 @@ func SaltBySecretGCMEncrypt[T, E, D typez.StrOrBytes](plainText T, secret E, add
 }
 
 // SaltBySecretGCMDecrypt
+//
+// Deprecated: uses 8-byte salt for key and nonce derivation. Use PasswordDecrypt instead.
 func SaltBySecretGCMDecrypt[E, D typez.StrOrBytes](cipherText []byte, secret E, additionalData D, reuseCipherText bool) ([]byte, error) {
 	// min: 16(salt header) + 16(tag)
 	if len(cipherText) < 32 {

@@ -193,6 +193,10 @@ func (s *SkipList[K, V]) Range(f func(key K, val V) bool) {
 // RangeWithStart traverses the skip list in ascending order starting from the start key.
 // The zone is [start, +∞)
 func (s *SkipList[K, V]) RangeWithStart(start K, f func(key K, val V) bool) {
+	if s.len == 0 {
+		return
+	}
+
 	cur := &s.head
 top:
 	for i := s.level - 1; i >= 0; i-- {

@@ -31,7 +31,7 @@ func APHash[T typez.StrOrBytes](s T) uint32 {
 		if (i & 1) == 0 {
 			hash ^= (hash << 7) ^ uint32(s[i]) ^ (hash >> 3)
 		} else {
-			hash ^= ^((hash << 11) ^ uint32(s[i]) ^ (hash >> 5)) + 1
+			hash ^= ^((hash << 11) ^ uint32(s[i]) ^ (hash >> 5))
 		}
 	}
 	return hash & 0x7FFFFFFF
@@ -44,7 +44,7 @@ func APHash64[T typez.StrOrBytes](s T) uint64 {
 		if (i & 1) == 0 {
 			hash ^= (hash << 7) ^ uint64(s[i]) ^ (hash >> 3)
 		} else {
-			hash ^= ^((hash << 11) ^ uint64(s[i]) ^ (hash >> 5)) + 1
+			hash ^= ^((hash << 11) ^ uint64(s[i]) ^ (hash >> 5))
 		}
 	}
 	return hash & 0x7FFFFFFFFFFFFFFF
@@ -133,15 +133,15 @@ func SDBMHash64[T typez.StrOrBytes](s T) uint64 {
 // PJWHash PJW Hash Function
 func PJWHash[T typez.StrOrBytes](s T) uint32 {
 	var bitsInUnsignedInt uint32 = 4 * 8
-	var ThreeQuarters = (bitsInUnsignedInt * 3) / 4
-	var OneEighth = bitsInUnsignedInt / 8
-	var HighBits uint32 = (0xFFFFFFFF) << (bitsInUnsignedInt - OneEighth)
+	var threeQuarters = (bitsInUnsignedInt * 3) / 4
+	var oneEighth = bitsInUnsignedInt / 8
+	var highBits uint32 = (0xFFFFFFFF) << (bitsInUnsignedInt - oneEighth)
 	var hash uint32 = 0
 	var test uint32 = 0
 	for i := 0; i < len(s); i++ {
-		hash = (hash << OneEighth) + uint32(s[i])
-		if test = hash & HighBits; test != 0 {
-			hash = (hash ^ (test >> ThreeQuarters)) & (^HighBits + 1)
+		hash = (hash << oneEighth) + uint32(s[i])
+		if test = hash & highBits; test != 0 {
+			hash = (hash ^ (test >> threeQuarters)) & ^highBits
 		}
 	}
 	return hash & 0x7FFFFFFF
@@ -149,16 +149,16 @@ func PJWHash[T typez.StrOrBytes](s T) uint32 {
 
 // PJWHash64 PJW Hash Function
 func PJWHash64[T typez.StrOrBytes](s T) uint64 {
-	var bitsInUnsignedInt uint64 = 4 * 8
-	var ThreeQuarters = (bitsInUnsignedInt * 3) / 4
-	var OneEighth = bitsInUnsignedInt / 8
-	var HighBits uint64 = (0xFFFFFFFF) << (bitsInUnsignedInt - OneEighth)
+	var bitsInUnsignedInt uint64 = 8 * 8
+	var threeQuarters = (bitsInUnsignedInt * 3) / 4
+	var oneEighth = bitsInUnsignedInt / 8
+	var highBits uint64 = uint64(0xFF) << (bitsInUnsignedInt - oneEighth)
 	var hash uint64 = 0
 	var test uint64 = 0
 	for i := 0; i < len(s); i++ {
-		hash = (hash << OneEighth) + uint64(s[i])
-		if test = hash & HighBits; test != 0 {
-			hash = (hash ^ (test >> ThreeQuarters)) & (^HighBits + 1)
+		hash = (hash << oneEighth) + uint64(s[i])
+		if test = hash & highBits; test != 0 {
+			hash = (hash ^ (test >> threeQuarters)) & ^highBits
 		}
 	}
 	return hash & 0x7FFFFFFFFFFFFFFF
@@ -172,7 +172,7 @@ func ELFHash[T typez.StrOrBytes](s T) uint32 {
 		hash = (hash << 4) + uint32(s[i])
 		if x = hash & 0xF0000000; x != 0 {
 			hash ^= x >> 24
-			hash &= ^x + 1
+			hash &= ^x
 		}
 	}
 	return hash & 0x7FFFFFFF
@@ -184,9 +184,9 @@ func ELFHash64[T typez.StrOrBytes](s T) uint64 {
 	var x uint64 = 0
 	for i := 0; i < len(s); i++ {
 		hash = (hash << 4) + uint64(s[i])
-		if x = hash & 0xF0000000; x != 0 {
-			hash ^= x >> 24
-			hash &= ^x + 1
+		if x = hash & 0xF000000000000000; x != 0 {
+			hash ^= x >> 56
+			hash &= ^x
 		}
 	}
 	return hash & 0x7FFFFFFFFFFFFFFF

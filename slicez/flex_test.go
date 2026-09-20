@@ -902,5 +902,13 @@ func makeFlexSlice(s []int, head, cap int) *FlexSlice[int] {
 	f.head = head
 	f.len = len(s)
 	return &f
+}
 
+func TestFlexSlice_InsertAt_TailOverflow(t *testing.T) {
+	f := NewFlexSlice[int](2)
+	f.Append(1, 2)
+	f.InsertAt(1, 3, 4) // newCap=4 == f.len, tail=4 (out of bounds)
+	f.Shift()
+	f.Append(5) // panic: index out of range [4] with length 4
+	testz.Equal(t, []int{3, 4, 2, 5}, f.ToSlice())
 }

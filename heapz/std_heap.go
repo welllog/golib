@@ -27,7 +27,7 @@ func Init[T any](h Interface[T]) {
 	// heapify
 	n := h.Len()
 	for i := n/2 - 1; i >= 0; i-- {
-		std_down(h, i, n)
+		stdDown(h, i, n)
 	}
 }
 
@@ -35,27 +35,27 @@ func Init[T any](h Interface[T]) {
 // The complexity is O(log n) where n = h.Len().
 func Push[T any](h Interface[T], x T) {
 	h.Push(x)
-	std_up(h, h.Len()-1)
+	stdUp(h, h.Len()-1)
 }
 
 // Pop removes and returns the minimum element (according to Less) from the heap.
 // The complexity is O(log n) where n = h.Len().
 // Pop is equivalent to Remove(h, 0).
-func Pop[T any](h Interface[T]) any {
+func Pop[T any](h Interface[T]) T {
 	n := h.Len() - 1
 	h.Swap(0, n)
-	std_down(h, 0, n)
+	stdDown(h, 0, n)
 	return h.Pop()
 }
 
 // Remove removes and returns the element at index i from the heap.
 // The complexity is O(log n) where n = h.Len().
-func Remove[T any](h Interface[T], i int) any {
+func Remove[T any](h Interface[T], i int) T {
 	n := h.Len() - 1
 	if n != i {
 		h.Swap(i, n)
-		if !std_down(h, i, n) {
-			std_up(h, i)
+		if !stdDown(h, i, n) {
+			stdUp(h, i)
 		}
 	}
 	return h.Pop()
@@ -66,12 +66,12 @@ func Remove[T any](h Interface[T], i int) any {
 // but less expensive than, calling Remove(h, i) followed by a Push of the new value.
 // The complexity is O(log n) where n = h.Len().
 func Fix[T any](h Interface[T], i int) {
-	if !std_down(h, i, h.Len()) {
-		std_up(h, i)
+	if !stdDown(h, i, h.Len()) {
+		stdUp(h, i)
 	}
 }
 
-func std_up[T any](h Interface[T], j int) {
+func stdUp[T any](h Interface[T], j int) {
 	for {
 		i := (j - 1) / 2 // parent
 		if i == j || !h.Less(j, i) {
@@ -82,7 +82,7 @@ func std_up[T any](h Interface[T], j int) {
 	}
 }
 
-func std_down[T any](h Interface[T], i0, n int) bool {
+func stdDown[T any](h Interface[T], i0, n int) bool {
 	i := i0
 	for {
 		j1 := 2*i + 1

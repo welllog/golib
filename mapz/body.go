@@ -13,7 +13,7 @@ import (
 	"github.com/welllog/golib/strz"
 )
 
-const _HIDDEN_KEY = "xx---.internal.request.payload.---xx"
+const hiddenKey = "xx---.internal.request.payload.---xx"
 
 // Body is a map[string]any
 type Body map[string]any
@@ -31,12 +31,12 @@ func (b Body) Read(p []byte) (int, error) {
 // CleanPayload cleans the payload
 // Deprecated: use ClearCache instead.
 func (b Body) CleanPayload() {
-	delete(b, _HIDDEN_KEY)
+	delete(b, hiddenKey)
 }
 
 // ClearCache clears the cached reader
 func (b Body) ClearCache() {
-	delete(b, _HIDDEN_KEY)
+	delete(b, hiddenKey)
 }
 
 func (b Body) Close() error {
@@ -75,7 +75,7 @@ func (b Body) MustJsonReader() *bytes.Reader {
 // JsonReader will return a bytes.Reader for the JSON representation of the Body
 // It will cache the reader for subsequent calls
 func (b Body) JsonReader() (*bytes.Reader, error) {
-	val, ok := b[_HIDDEN_KEY]
+	val, ok := b[hiddenKey]
 	if !ok {
 		bs, err := json.Marshal(b)
 		if err != nil {
@@ -83,7 +83,7 @@ func (b Body) JsonReader() (*bytes.Reader, error) {
 		}
 
 		reader := bytes.NewReader(bs)
-		b[_HIDDEN_KEY] = reader
+		b[hiddenKey] = reader
 		return reader, nil
 	}
 
@@ -174,9 +174,9 @@ func toStr(value any) string {
 	}
 }
 
-var _popEncodeReplacer = strings.NewReplacer("+", "%20", "*", "%2A", "%7E", "~")
+var popEncodeReplacer = strings.NewReplacer("+", "%20", "*", "%2A", "%7E", "~")
 
 // PopEncode encodes the string for pop
 func PopEncode(str string) string {
-	return _popEncodeReplacer.Replace(url.QueryEscape(str))
+	return popEncodeReplacer.Replace(url.QueryEscape(str))
 }

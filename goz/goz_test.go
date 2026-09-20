@@ -178,3 +178,13 @@ func panic2(n int) {
 func panic3(n int) {
 	panic(n)
 }
+
+func TestLimiter_WaitGroup_ReusePanic(t *testing.T) {
+	for i := 0; i < 50; i++ {
+		l := NewLimiter(1)
+		l.Go(func() { time.Sleep(20 * time.Millisecond) })
+		l.Wait(2 * time.Millisecond)
+		go l.Go(func() {})
+		l.Wait()
+	}
+}

@@ -128,6 +128,7 @@ func TestLen(t *testing.T) {
 	}
 	for _, tt := range tests {
 		testz.Equal(t, tt.n, Len(tt.o), "", tt.o)
+		testz.Equal(t, tt.n, RuneCount(tt.o), "", tt.o)
 	}
 }
 
@@ -169,6 +170,9 @@ func TestSubByDisplay(t *testing.T) {
 		{"测试case", 2, "测"},
 		{"测试case", 3, "测"},
 		{"测试case", 5, "测试c"},
+		// invalid utf-8 bytes count as 2 columns each, must not panic
+		{"\xff\xff\xff\xffX", 4, "\xff\xff"},
+		{"abc\xff\xff\xff\xffdef", 9, "abc\xff\xff\xff"},
 	}
 
 	for _, tt := range tests {
@@ -222,6 +226,14 @@ func TestSnakeToCamelCase(t *testing.T) {
 		{false, "_", "_"},
 		{true, "a", "A"},
 		{false, "a", "a"},
+		{false, "a__b", "aB"},
+		{true, "a__b", "AB"},
+		{false, "a___b", "aB"},
+		{false, "test___case", "testCase"},
+		{false, "user_1_name", "user1Name"},
+		{false, "a_1b", "a1b"},
+		{false, "a_b_", "aB"},
+		{false, "a_b__", "aB"},
 	}
 	for _, tt := range tests {
 		testz.Equal(t, tt.b, SnakeToCamelCase(tt.a, tt.f), "", tt.a, tt.f)

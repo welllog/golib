@@ -26,13 +26,14 @@ func (m KV[K, V]) GetDel(key K) (V, bool) {
 
 // GetOrSet returns the value associated with the key if it exists.
 // Otherwise, it sets the value associated with the key to the provided value and returns that value.
-func (m KV[K, V]) GetOrSet(key K, value V) (actual V, got bool) {
-	actual, got = m[key]
-	if !got {
+// The loaded result is true if the value was loaded, false if stored.
+func (m KV[K, V]) GetOrSet(key K, value V) (actual V, loaded bool) {
+	actual, loaded = m[key]
+	if !loaded {
 		m[key] = value
 		actual = value
 	}
-	return
+	return actual, loaded
 }
 
 // Set sets the value associated with the key.

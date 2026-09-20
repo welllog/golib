@@ -105,6 +105,30 @@ func TestSliceDList_Remove(t *testing.T) {
 	}
 }
 
+func TestSliceDList_FreeNode(t *testing.T) {
+	var l SliceDList[int]
+	l.Init(10)
+
+	// nodes never allocated are free nodes and must not be accessible
+	if _, ok := l.Get(0); ok {
+		t.Error("Get on free node should fail")
+	}
+	if l.Remove(0) {
+		t.Error("Remove on free node should fail")
+	}
+
+	if _, ok := l.PushBack(10); !ok {
+		t.Fatal("PushBack failed")
+	}
+	if l.Remove(5) {
+		t.Error("Remove on free node should fail")
+	}
+	if _, ok := l.Get(5); ok {
+		t.Error("Get on free node should fail")
+	}
+	checkSliceDList(t, &l, []int{10})
+}
+
 func TestSliceDList_Access(t *testing.T) {
 	var l SliceDList[int]
 	l.Init(5)

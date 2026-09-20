@@ -22,6 +22,10 @@ func (s DpSolvers[T]) Best(maxValue int) []T {
 }
 
 // BestAllowMinOverflow returns the best solution for the given maximum value, but allows a minimum overflow.
+// This is designed for business scenarios such as coupon deduction where zero-payment (overflow, i.e. coupon value > order value)
+// is strictly preferred over any non-overflow solution (paying non-zero).
+// When multiple overflow solutions exist, it chooses the one with the minimum overflow (least waste).
+// If no overflow solution exists, it falls back to the closest non-overflow solution.
 func (s DpSolvers[T]) BestAllowMinOverflow(maxValue int) []T {
 	best, ok := s[maxValue]
 	if ok {
@@ -51,7 +55,7 @@ func (s DpSolvers[T]) BestAllowMinOverflow(maxValue int) []T {
 
 // FindDpSolvers finds all possible solutions to the 0-1 knapsack problem.
 func FindDpSolvers[T any](maxValue int, items []T, valueFunc func(T) int, allowOverOnce bool,
-	tieBreaker ...func(old []T, new []T) (replace bool)) DpSolvers[T] {
+	tieBreaker ...func(old []T, candidate []T) (replace bool)) DpSolvers[T] {
 	var breaker func([]T, []T) bool
 	if len(tieBreaker) > 0 {
 		breaker = tieBreaker[0]
@@ -67,15 +71,21 @@ func FindDpSolvers[T any](maxValue int, items []T, valueFunc func(T) int, allowO
 	for _, item := range items {
 		value := valueFunc(item)
 		for currentValue, solver := range dp {
+			if currentValue > maxValue {
+				continue
+			}
+
 			newValue := currentValue + value
 			if newValue > maxValue {
 				if !allowOverOnce || (overflow > 0 && newValue > overflow) {
 					continue
 				}
-				overflow = newValue
 			}
 
 			oldSolver, ok := dp[newValue]
+			if !ok {
+				oldSolver, ok = dpTmp[newValue]
+			}
 			if ok && breaker == nil {
 				continue
 			}
@@ -88,6 +98,27 @@ func FindDpSolvers[T any](maxValue int, items []T, valueFunc func(T) int, allowO
 				continue
 			}
 
+			if newValue > maxValue {
+				if overflow == 0 || newValue < overflow {
+					for v, s := range dpTmp {
+						if v > maxValue && v > newValue {
+							tmpPool.Put(s)
+							delete(dpTmp, v)
+						}
+					}
+					for v, s := range dp {
+						if v > maxValue && v > newValue {
+							tmpPool.Put(s)
+							delete(dp, v)
+						}
+					}
+					overflow = newValue
+				}
+			}
+
+			if prev, exists := dpTmp[newValue]; exists {
+				tmpPool.Put(prev)
+			}
 			dpTmp[newValue] = newSolver
 		}
 
@@ -116,7 +147,7 @@ type knapsack[T any] struct {
 // valueFunc is a function that returns the value of an item.
 // tieBreaker is an optional function that is used to break ties when multiple solutions have the same value.
 func Knapsack[T any](maxWeight int, items []T, weightFunc, valueFunc func(T) int,
-	tieBreaker ...func(old []T, new []T) (replace bool)) []T {
+	tieBreaker ...func(old []T, candidate []T) (replace bool)) []T {
 	var breaker func([]T, []T) bool
 	if len(tieBreaker) > 0 {
 		breaker = tieBreaker[0]

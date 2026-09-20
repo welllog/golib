@@ -128,7 +128,7 @@ func (l *DList[T]) PushBackNode(e *DNode[T]) {
 	l.insert(e, l.root.prev)
 }
 
-// InsertNodeBefore inserts a new node e before mark and returns e.
+// InsertNodeBefore inserts a new node e before mark.
 func (l *DList[T]) InsertNodeBefore(e, mark *DNode[T]) {
 	if mark.list != l {
 		return
@@ -136,7 +136,7 @@ func (l *DList[T]) InsertNodeBefore(e, mark *DNode[T]) {
 	l.insert(e, mark.prev)
 }
 
-// InsertNodeAfter inserts a new node e after mark and returns e.
+// InsertNodeAfter inserts a new node e after mark.
 func (l *DList[T]) InsertNodeAfter(e, mark *DNode[T]) {
 	if mark.list != l {
 		return

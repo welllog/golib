@@ -185,6 +185,10 @@ func (s *SkipListWithCmp[K, V]) Range(f func(K, V) bool) {
 // RangeWithStart calls f sequentially for each key and value present in the skip list starting from the key.
 // The zone is [start, +∞)
 func (s *SkipListWithCmp[K, V]) RangeWithStart(start K, f func(K, V) bool) {
+	if s.len == 0 {
+		return
+	}
+
 	cur := &s.head
 top:
 	for i := s.level - 1; i >= 0; i-- {
@@ -256,12 +260,24 @@ func (s *SkipListWithCmp[K, V]) Values() []V {
 	return vals
 }
 
+func (s *SkipListWithCmp[K, V]) lazyInit() {
+	if s.head.next == nil {
+		if s.cmp == nil {
+			panic("listz: SkipListWithCmp requires custom comparator; use NewSkipListWithCmp or Init")
+		}
+		s.head.next = make([]*SkipNodeCmp[K, V], maxLevel)
+		s.level = 1
+		s.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
+}
+
 // set sets the value associated with the key.
 // mode: 0 set the value don't care if the key exists
 //
 //	1 set the value if the key exists
 //	2 set the value if the key does not exist
 func (s *SkipListWithCmp[K, V]) set(key K, val V, mode int) bool {
+	s.lazyInit()
 	update := make([]*SkipNodeCmp[K, V], maxLevel)
 	cur := &s.head
 	for i := s.level - 1; i >= 0; i-- {

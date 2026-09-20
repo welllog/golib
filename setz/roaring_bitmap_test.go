@@ -33,6 +33,9 @@ func TestRoaringBitmap_Add(t *testing.T) {
 		}
 		i++
 	}
+	if i != num+1 {
+		t.Fatalf("iterated %d values, expected %d", i-1, num)
+	}
 	i = 1
 	m.Range(func(num uint32) bool {
 		if num != uint32(i) {
@@ -52,5 +55,32 @@ func TestRoaringBitmap_Add(t *testing.T) {
 	iter = m.Iter()
 	for iter.Next() {
 		t.Fatalf("unexpected value: %d", iter.Value())
+	}
+}
+
+func TestRoaringBitmap_Iter(t *testing.T) {
+	var m RoaringBitmap
+	m.Add(1)
+	m.Add(65537)
+	m.Add(131073)
+
+	if m.Len() != 3 {
+		t.Fatalf("invalid len: %d", m.Len())
+	}
+
+	// values span multiple containers, all of them must be iterated
+	want := []uint32{1, 65537, 131073}
+	var got []uint32
+	iter := m.Iter()
+	for iter.Next() {
+		got = append(got, iter.Value())
+	}
+	if len(got) != len(want) {
+		t.Fatalf("iterated %d values %v, expected: %d values %v", len(got), got, len(want), want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("invalid value: %d, expected: %d", got[i], want[i])
+		}
 	}
 }

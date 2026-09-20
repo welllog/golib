@@ -19,9 +19,9 @@ type SafeKV[K comparable, V any] struct {
 }
 
 // NewSafeKV creates a new SafeKV
-func NewSafeKV[K comparable, V any](cap int) *SafeKV[K, V] {
+func NewSafeKV[K comparable, V any](capacity int) *SafeKV[K, V] {
 	return &SafeKV[K, V]{
-		entries: make(KV[K, V], cap),
+		entries: make(KV[K, V], capacity),
 		calls:   make(map[K]*call[V]),
 	}
 }
@@ -55,37 +55,38 @@ func (s *SafeKV[K, V]) GetDel(key K) (V, bool) {
 
 // GetOrSet returns the value associated with the key if it exists.
 // Otherwise, it sets the value associated with the key to the provided value and returns that value.
-func (s *SafeKV[K, V]) GetOrSet(key K, value V) (actual V, got bool) {
+// The loaded result is true if the value was loaded, false if stored.
+func (s *SafeKV[K, V]) GetOrSet(key K, value V) (actual V, loaded bool) {
 	s.mu.RLock()
-	actual, got = s.entries[key]
+	actual, loaded = s.entries[key]
 	s.mu.RUnlock()
 
-	if !got {
+	if !loaded {
 		s.mu.Lock()
-		actual, got = s.entries[key]
-		if !got {
+		actual, loaded = s.entries[key]
+		if !loaded {
 			s.entries[key] = value
 			actual = value
 		}
 		s.mu.Unlock()
 	}
-	return
+	return actual, loaded
 }
 
 // GetOrSetFunc returns the value associated with the key if it exists.
 // Otherwise, it sets the value associated with the key to the result of fn and returns that value.
-// got indicates whether the value was already present.
-func (s *SafeKV[K, V]) GetOrSetFunc(key K, fn func() (V, error)) (actual V, got bool, err error) {
+// loaded indicates whether the value was already present.
+func (s *SafeKV[K, V]) GetOrSetFunc(key K, fn func() (V, error)) (actual V, loaded bool, err error) {
 	s.mu.RLock()
-	actual, got = s.entries[key]
+	actual, loaded = s.entries[key]
 	s.mu.RUnlock()
-	if got {
+	if loaded {
 		return actual, true, nil
 	}
 
 	s.mu.Lock()
-	actual, got = s.entries[key]
-	if got {
+	actual, loaded = s.entries[key]
+	if loaded {
 		s.mu.Unlock()
 		return actual, true, nil
 	}
@@ -95,7 +96,10 @@ func (s *SafeKV[K, V]) GetOrSetFunc(key K, fn func() (V, error)) (actual V, got 
 		s.mu.Unlock()
 		c.wg.Wait() // Wait for the other goroutine to finish.
 
-		return c.val, true, c.err
+		if c.err != nil {
+			return c.val, false, c.err
+		}
+		return c.val, true, nil
 	}
 
 	// No other goroutine is running fn() for this key. Create a new call.
@@ -145,11 +149,11 @@ func (s *SafeKV[K, V]) GetWithMap(m map[K]V) {
 // GetWithLock calls fn with the value associated with the key if the key existed
 func (s *SafeKV[K, V]) GetWithLock(key K, fn func(V)) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 	value, ok := s.entries[key]
 	if ok {
 		fn(value)
 	}
-	s.mu.RUnlock()
 }
 
 // Set sets the value associated with the key
@@ -171,10 +175,8 @@ func (s *SafeKV[K, V]) SetBatch(kvs map[K]V) {
 // SetIf sets the value associated with the key if the key does not exist or if fn returns true for the old value
 func (s *SafeKV[K, V]) SetIf(key K, value V, fn func(oldValue V) bool) bool {
 	s.mu.Lock()
-	ok := s.entries.SetIf(key, value, fn)
-	s.mu.Unlock()
-
-	return ok
+	defer s.mu.Unlock()
+	return s.entries.SetIf(key, value, fn)
 }
 
 // SetIfPresent sets the value associated with the key if the key exists
@@ -223,10 +225,8 @@ func (s *SafeKV[K, V]) Remove(keys ...K) {
 // RemoveIf deletes the value associated with the key if fn returns true for the old value
 func (s *SafeKV[K, V]) RemoveIf(key K, fn func(value V) bool) bool {
 	s.mu.Lock()
-	ok := s.entries.RemoveIf(key, fn)
-	s.mu.Unlock()
-
-	return ok
+	defer s.mu.Unlock()
+	return s.entries.RemoveIf(key, fn)
 }
 
 // Has returns whether the key exists
@@ -276,12 +276,12 @@ func (s *SafeKV[K, V]) Values() []V {
 // Range calls fn sequentially for each key and value present in the map.
 func (s *SafeKV[K, V]) Range(fn func(key K, value V) bool) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 	for k, v := range s.entries {
 		if !fn(k, v) {
 			break
 		}
 	}
-	s.mu.RUnlock()
 }
 
 // Clear clears the map
@@ -294,13 +294,13 @@ func (s *SafeKV[K, V]) Clear() {
 // Map calls fn with the map under write lock
 func (s *SafeKV[K, V]) Map(fn func(KV[K, V])) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	fn(s.entries)
-	s.mu.Unlock()
 }
 
 // ReadMap calls fn with the map under read lock
 func (s *SafeKV[K, V]) ReadMap(fn func(KV[K, V])) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 	fn(s.entries)
-	s.mu.RUnlock()
 }

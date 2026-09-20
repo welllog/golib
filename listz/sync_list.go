@@ -1,6 +1,7 @@
 package listz
 
 import (
+	"context"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -33,8 +34,8 @@ func (l *SyncList[T]) Len() int {
 	return int(atomic.LoadInt64(&l.len))
 }
 
-// Push adds a value to the end of the list.
-func (l *SyncList[T]) Push(value T) {
+// Enqueue adds a value to the end of the list.
+func (l *SyncList[T]) Enqueue(value T) {
 	node := unsafe.Pointer(&syncNode[T]{value: value})
 
 	for {
@@ -43,7 +44,6 @@ func (l *SyncList[T]) Push(value T) {
 		next := atomic.LoadPointer(&tailNode.next)
 
 		if next == nil && atomic.CompareAndSwapPointer(&tailNode.next, next, node) {
-			// atomic.CompareAndSwapPointer(&l.tail, tail, node)
 			atomic.StorePointer(&l.tail, node)
 			atomic.AddInt64(&l.len, 1)
 			return
@@ -53,9 +53,47 @@ func (l *SyncList[T]) Push(value T) {
 	}
 }
 
-// Pop removes and returns the value at the front of the list.
-// If the list is empty or concurrent Pop is in progress, it returns false.
-func (l *SyncList[T]) Pop() (T, bool) {
+// Push adds a value to the end of the list.
+//
+// Deprecated: Use Enqueue instead.
+func (l *SyncList[T]) Push(value T) {
+	l.Enqueue(value)
+}
+
+// EnqueueContext attempts to add a value to the end of the list.
+// If the context is canceled or exceeds its deadline, it returns false.
+func (l *SyncList[T]) EnqueueContext(ctx context.Context, value T) bool {
+	node := unsafe.Pointer(&syncNode[T]{value: value})
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
+
+		tail := atomic.LoadPointer(&l.tail)
+		tailNode := (*syncNode[T])(tail)
+		next := atomic.LoadPointer(&tailNode.next)
+
+		if next == nil && atomic.CompareAndSwapPointer(&tailNode.next, next, node) {
+			atomic.StorePointer(&l.tail, node)
+			atomic.AddInt64(&l.len, 1)
+			return true
+		}
+
+		runtime.Gosched()
+	}
+}
+
+// PushContext attempts to add a value to the end of the list with context.
+func (l *SyncList[T]) PushContext(ctx context.Context, value T) bool {
+	return l.EnqueueContext(ctx, value)
+}
+
+// Dequeue removes and returns the value at the front of the list.
+// If the list is empty or concurrent Dequeue is in progress, it returns false.
+func (l *SyncList[T]) Dequeue() (T, bool) {
 	head := atomic.LoadPointer(&l.head)
 	tail := atomic.LoadPointer(&l.tail)
 
@@ -77,12 +115,20 @@ func (l *SyncList[T]) Pop() (T, bool) {
 	return zero, false
 }
 
-// PopWait removes and returns the value at the front of the list.
-// If maxWait is negative, it will block until the value is popped.
-func (l *SyncList[T]) PopWait(maxWait time.Duration) (T, bool) {
+// Pop removes and returns the value at the front of the list.
+// If the list is empty or concurrent Pop is in progress, it returns false.
+//
+// Deprecated: Use Dequeue instead.
+func (l *SyncList[T]) Pop() (T, bool) {
+	return l.Dequeue()
+}
+
+// DequeueWait removes and returns the value at the front of the list.
+// If maxWait is negative, it will block until the value is dequeued.
+func (l *SyncList[T]) DequeueWait(maxWait time.Duration) (T, bool) {
 	if maxWait < 0 {
 		for {
-			if value, ok := l.Pop(); ok {
+			if value, ok := l.Dequeue(); ok {
 				return value, ok
 			}
 
@@ -90,7 +136,7 @@ func (l *SyncList[T]) PopWait(maxWait time.Duration) (T, bool) {
 		}
 	}
 
-	if v, ok := l.Pop(); ok {
+	if v, ok := l.Dequeue(); ok {
 		return v, true
 	}
 
@@ -100,19 +146,73 @@ func (l *SyncList[T]) PopWait(maxWait time.Duration) (T, bool) {
 	}
 
 	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
 	begin := time.Now()
 
 	for {
 		now := <-ticker.C
 
-		if v, ok := l.Pop(); ok {
-			ticker.Stop()
+		if v, ok := l.Dequeue(); ok {
 			return v, true
 		}
 
 		if now.Sub(begin) >= maxWait {
-			ticker.Stop()
 			return zero, false
 		}
 	}
+}
+
+// PopWait removes and returns the value at the front of the list.
+// If maxWait is negative, it will block until the value is popped.
+//
+// Deprecated: Use DequeueWait instead.
+func (l *SyncList[T]) PopWait(maxWait time.Duration) (T, bool) {
+	return l.DequeueWait(maxWait)
+}
+
+// DequeueContext removes and returns the value at the front of the list.
+// It blocks until a value is available or until ctx is done.
+func (l *SyncList[T]) DequeueContext(ctx context.Context) (T, bool) {
+	var zero T
+	select {
+	case <-ctx.Done():
+		return zero, false
+	default:
+	}
+
+	if v, ok := l.Dequeue(); ok {
+		return v, true
+	}
+
+	// Spin a few times before sleeping on ticker to handle immediate producers
+	for i := 0; i < 10; i++ {
+		select {
+		case <-ctx.Done():
+			return zero, false
+		default:
+		}
+		runtime.Gosched()
+		if v, ok := l.Dequeue(); ok {
+			return v, true
+		}
+	}
+
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return zero, false
+		case <-ticker.C:
+			if v, ok := l.Dequeue(); ok {
+				return v, true
+			}
+		}
+	}
+}
+
+// PopContext removes and returns the value at the front of the list with context support.
+func (l *SyncList[T]) PopContext(ctx context.Context) (T, bool) {
+	return l.DequeueContext(ctx)
 }

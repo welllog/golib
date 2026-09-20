@@ -266,3 +266,14 @@ func TestSkipListWithCmp_RangeWithRange(t *testing.T) {
 		return false
 	})
 }
+
+func TestSkipListWithCmp_ZeroValue_Panic(t *testing.T) {
+	var s SkipListWithCmp[int, int]
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic when calling Set on zero-value SkipListWithCmp")
+		}
+	}()
+	s.Set(1, 1)
+}

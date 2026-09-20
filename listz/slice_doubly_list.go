@@ -24,24 +24,26 @@ type sdNode[T any] struct {
 }
 
 // Init initializes or clears the list.
-func (l *SliceDList[T]) Init(cap int) {
-	if cap < 0 {
-		cap = 0
+func (l *SliceDList[T]) Init(capacity int) {
+	if capacity < 0 {
+		capacity = 0
 	}
-	if cap > maxCap {
-		cap = maxCap
+	if capacity > maxCap {
+		capacity = maxCap
 	}
-	l.nodes = make([]sdNode[T], cap)
+	l.nodes = make([]sdNode[T], capacity)
 	l.head = nullIdx
 	l.tail = nullIdx
 	l.len = 0
 	l.free = nullIdx
-	if cap > 0 {
+	if capacity > 0 {
 		l.free = 0
-		for i := 0; i < cap-1; i++ {
+		for i := 0; i < capacity-1; i++ {
 			l.nodes[i].next = uint16(i + 1)
+			l.nodes[i].prev = nullIdx
 		}
-		l.nodes[cap-1].next = nullIdx
+		l.nodes[capacity-1].next = nullIdx
+		l.nodes[capacity-1].prev = nullIdx
 	}
 }
 

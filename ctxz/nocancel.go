@@ -27,7 +27,7 @@ func (n noCancelContext) Value(key any) any {
 }
 
 // WithoutCancel returns a copy of the parent context that never cancels.
-func WithoutCancel(ctx context.Context) (valueOnlyContext context.Context) {
+func WithoutCancel(ctx context.Context) context.Context {
 	if ctx == nil {
 		panic("cannot create context from nil parent")
 	}

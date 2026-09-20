@@ -1,6 +1,7 @@
 package randz
 
 import (
+	mathbits "math/bits"
 	"math/rand"
 	"strings"
 	"sync"
@@ -66,9 +67,16 @@ type StrGenerator struct {
 func NewStrGenerator(charSet string, randSource rand.Source) StrGenerator {
 	r := []rune(charSet)
 
+	// Optimization Note (O1):
+	// Compute the minimum bit width required to represent the valid index range [0, len(r)-1].
+	// Using len(r)-1 instead of len(r) prevents an off-by-one bit inflation when len(r) is a power of 2
+	// (e.g. for length 16/32/64, bits becomes 4/5/6 instead of 5/6/7).
+	// This ensures a 100% tight sampling space and eliminates up to 50% rejection rate in random sampling.
 	var bits int
-	for l := len(r); l != 0; bits++ {
-		l = l >> 1
+	if len(r) <= 1 {
+		bits = 1
+	} else {
+		bits = mathbits.Len(uint(len(r) - 1))
 	}
 
 	return StrGenerator{
@@ -82,6 +90,9 @@ func NewStrGenerator(charSet string, randSource rand.Source) StrGenerator {
 
 // Generate returns a random string with the specified length.
 func (r *StrGenerator) Generate(n int) string {
+	if n <= 0 || len(r.charSet) == 0 {
+		return ""
+	}
 	var buf strings.Builder
 	buf.Grow(n)
 	for i, cache, remain := n-1, r.randSource.Int63(), r.charIdxMax; i >= 0; {

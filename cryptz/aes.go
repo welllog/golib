@@ -83,6 +83,12 @@ func AESGCMDecryptLen[T typez.StrOrBytes](cipherText T) int {
 // iv length must be 16 bytes, iv should be random to ensure safety
 // plainText could pre grow padding length, so dst could reuse plainText memory
 func AESCBCEncrypt(dst, plainText, key, iv []byte) error {
+	targetLen := AESCBCEncryptLen(plainText)
+	if len(dst) < targetLen {
+		return errors.New("dst buffer too small")
+	}
+	dst = dst[:targetLen]
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return fmt.Errorf("NewCipher error: %w", err)
@@ -107,6 +113,10 @@ func AESCBCDecrypt(dst, cipherText, key, iv []byte) (int, error) {
 		return 0, errors.New("cipherText length illegal")
 	}
 
+	if len(dst) < len(cipherText) {
+		return 0, errors.New("dst buffer too small")
+	}
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return 0, fmt.Errorf("NewCipher error: %w", err)
@@ -115,7 +125,7 @@ func AESCBCDecrypt(dst, cipherText, key, iv []byte) (int, error) {
 	cbc := cipher.NewCBCDecrypter(block, iv)
 	cbc.CryptBlocks(dst, cipherText)
 
-	return pkcs7UnPadding(dst)
+	return pkcs7UnPadding(dst[:len(cipherText)])
 }
 
 // AESCTREncrypt encrypts plainText with key and iv
@@ -151,7 +161,7 @@ func AESCTRDecrypt(dst, cipherText, key, iv []byte) error {
 // AESCTRStreamEncrypt encrypts data from src reader to dst writer with key and iv
 // key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
 // iv length must be 16 bytes, iv should be random to ensure safety
-func AESCTRStreamEncrypt(dst io.Writer, stream io.Reader, key, iv []byte) error {
+func AESCTRStreamEncrypt(dst io.Writer, src io.Reader, key, iv []byte) error {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return fmt.Errorf("NewCipher error: %w", err)
@@ -159,7 +169,7 @@ func AESCTRStreamEncrypt(dst io.Writer, stream io.Reader, key, iv []byte) error 
 
 	encStream := cipher.NewCTR(block, iv)
 	writer := &cipher.StreamWriter{S: encStream, W: dst}
-	_, err = io.Copy(writer, stream)
+	_, err = io.Copy(writer, src)
 	if err != nil {
 		return fmt.Errorf("encrypt stream error: %w", err)
 	}
@@ -170,14 +180,14 @@ func AESCTRStreamEncrypt(dst io.Writer, stream io.Reader, key, iv []byte) error 
 // AESCTRStreamDecrypt decrypts data from src reader to dst writer with key and iv
 // key length must be 16, 24 or 32 bytes to select AES-128, AES-192 or AES-256.
 // iv length must be 16 bytes, iv should be random to ensure safety
-func AESCTRStreamDecrypt(dst io.Writer, stream io.Reader, key, iv []byte) error {
+func AESCTRStreamDecrypt(dst io.Writer, src io.Reader, key, iv []byte) error {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return fmt.Errorf("NewCipher error: %w", err)
 	}
 
 	decStream := cipher.NewCTR(block, iv)
-	reader := &cipher.StreamReader{S: decStream, R: stream}
+	reader := &cipher.StreamReader{S: decStream, R: src}
 	_, err = io.Copy(dst, reader)
 	if err != nil {
 		return fmt.Errorf("decrypt stream error: %w", err)
@@ -202,6 +212,11 @@ func AESGCMEncrypt(dst, plainText, key, nonce, additionalData []byte) error {
 		return fmt.Errorf("NewGCM error: %w", err)
 	}
 
+	reqCap := len(plainText) + gcm.Overhead()
+	if cap(dst) < reqCap {
+		return errors.New("dst capacity is insufficient for ciphertext and tag")
+	}
+
 	gcm.Seal(dst[:0], nonce, plainText, additionalData)
 	return nil
 }
@@ -220,6 +235,15 @@ func AESGCMDecrypt(dst, cipherText, key, nonce, additionalData []byte) error {
 	gcm, err := cipher.NewGCMWithNonceSize(block, len(nonce))
 	if err != nil {
 		return fmt.Errorf("NewGCM error: %w", err)
+	}
+
+	if len(cipherText) < gcm.Overhead() {
+		return errors.New("cipherText too short")
+	}
+
+	reqCap := len(cipherText) - gcm.Overhead()
+	if cap(dst) < reqCap {
+		return errors.New("dst capacity is insufficient for plaintext")
 	}
 
 	_, err = gcm.Open(dst[:0], nonce, cipherText, additionalData)

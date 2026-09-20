@@ -10,12 +10,14 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash"
 	"math"
+	"unsafe"
 
 	"github.com/welllog/golib/strz"
 	"github.com/welllog/golib/typez"
@@ -31,7 +33,7 @@ type AEADFactory func(key []byte) (cipher.AEAD, error)
 
 // HPKE implements Hybrid Public Key Encryption (HPKE) as per RFC 9180.
 // This implementation currently supports:
-// - KEM: DHKEM(Curve, HKDF-SHA256)
+// - KEM: DHKEM(Curve, HKDF-SHA256/384/512)
 // - KDF: HKDF-SHA256
 // - AEAD: AES-128-GCM (default, but swappable)
 // It supports "Base" mode (anonymous) and "Auth" mode (sender authentication).
@@ -42,6 +44,8 @@ type HPKE struct {
 	aeadOverhead  int
 	aeadNonceSize int
 	kemEncLen     int
+	kemSecretLen  int
+	kemHash       func() hash.Hash
 	suiteID       []byte
 	kemSuiteID    []byte
 	pskIDHash     []byte
@@ -84,7 +88,9 @@ var (
 	labelKey       = []byte("key")
 	labelBaseNonce = []byte("base_nonce")
 
-	ErrDHZero = errors.New("hpke: dh shared secret is all-zero")
+	ErrDHZero        = errors.New("hpke: dh shared secret is all-zero")
+	ErrNonceReuse    = errors.New("hpke: seal called multiple times with the same seq without incrementing (nonce reuse risk)")
+	ErrBufferOverlap = errors.New("hpke: dst and plaintext overlap")
 )
 
 // defaultAESGCM is the default AEAD factory using AES-128-GCM.
@@ -114,15 +120,23 @@ func NewHPKE(curve ecdh.Curve) *HPKE {
 	case ecdh.P256():
 		h.kemID = kemP256HKDFSHA256
 		h.kemEncLen = 65
+		h.kemSecretLen = 32
+		h.kemHash = sha256.New
 	case ecdh.X25519():
 		h.kemID = kemX25519HKDFSHA256
 		h.kemEncLen = 32
+		h.kemSecretLen = 32
+		h.kemHash = sha256.New
 	case ecdh.P384():
 		h.kemID = kemP384HKDFSHA384
 		h.kemEncLen = 97
+		h.kemSecretLen = 48
+		h.kemHash = sha512.New384
 	case ecdh.P521():
 		h.kemID = kemP521HKDFSHA512
 		h.kemEncLen = 133
+		h.kemSecretLen = 64
+		h.kemHash = sha512.New
 	default:
 		// For unknown curves (e.g. new ones added to stdlib), try to determine length dynamically.
 		prv, err := curve.GenerateKey(rand.Reader)
@@ -131,6 +145,8 @@ func NewHPKE(curve ecdh.Curve) *HPKE {
 		}
 		h.kemEncLen = len(prv.PublicKey().Bytes())
 		h.kemID = kemP256HKDFSHA256 // Best effort fallback
+		h.kemSecretLen = 32
+		h.kemHash = sha256.New
 	}
 
 	h.computeSuiteID()
@@ -186,11 +202,28 @@ func (h *HPKE) GenerateKey() (*ecdh.PrivateKey, *ecdh.PublicKey, error) {
 	return prv, prv.PublicKey(), nil
 }
 
+func bufferOverlap(dst, src []byte) bool {
+	if cap(dst) == 0 || len(src) == 0 {
+		return false
+	}
+	dstStart := uintptr(unsafe.Pointer(&dst[:cap(dst)][0]))
+	dstEnd := dstStart + uintptr(cap(dst))
+	srcStart := uintptr(unsafe.Pointer(&src[0]))
+	srcEnd := srcStart + uintptr(len(src))
+
+	return dstStart < srcEnd && srcStart < dstEnd
+}
+
 // Seal encrypts and authenticates the plaintext, appending the result to dst.
 // The result is: ephPub (ephemeral pub key) || ciphertext
 // If sendPrv is nil, it uses Base mode (anonymous).
 // If sendPrv is provided, it uses Auth mode (authenticated).
+//
+// Note: dst and plaintext must not overlap in memory because ephPub is prepended to dst.
 func (h *HPKE) Seal(dst []byte, sendPrv *ecdh.PrivateKey, recvPub *ecdh.PublicKey, info, plaintext, aad []byte) ([]byte, error) {
+	if bufferOverlap(dst, plaintext) {
+		return nil, ErrBufferOverlap
+	}
 
 	ephPrv, ephPub, err := h.GenerateKey()
 	if err != nil {
@@ -226,15 +259,15 @@ func (h *HPKE) Seal(dst []byte, sendPrv *ecdh.PrivateKey, recvPub *ecdh.PublicKe
 
 		sendPubBytes := sendPrv.PublicKey().Bytes()
 		kemContextSize += len(sendPubBytes)
-		bufSize := 32 + len(ss1) + len(ss2) + kemContextSize
+		bufSize := h.kemSecretLen + len(ss1) + len(ss2) + kemContextSize
 		if bufSize <= defaultBufSize {
 			var tmp [defaultBufSize]byte
 			buf = tmp[:]
 		} else {
 			buf = make([]byte, bufSize)
 		}
-		dh = buf[32 : 32+len(ss1)+len(ss2)]
-		kemContext = buf[32+len(ss1)+len(ss2) : bufSize]
+		dh = buf[h.kemSecretLen : h.kemSecretLen+len(ss1)+len(ss2)]
+		kemContext = buf[h.kemSecretLen+len(ss1)+len(ss2) : bufSize]
 		copy(dh, ss1)
 		copy(dh[len(ss1):], ss2)
 		copy(kemContext, ephPubBytes)
@@ -250,14 +283,14 @@ func (h *HPKE) Seal(dst []byte, sendPrv *ecdh.PrivateKey, recvPub *ecdh.PublicKe
 			return nil, ErrDHZero
 		}
 
-		bufSize := 32 + kemContextSize
+		bufSize := h.kemSecretLen + kemContextSize
 		if bufSize <= defaultBufSize {
 			var tmp [defaultBufSize]byte
 			buf = tmp[:]
 		} else {
 			buf = make([]byte, bufSize)
 		}
-		kemContext = buf[32:bufSize]
+		kemContext = buf[h.kemSecretLen:bufSize]
 		copy(kemContext, ephPubBytes)
 		copy(kemContext[len(ephPubBytes):], recvPubBytes)
 	}
@@ -336,15 +369,15 @@ func (h *HPKE) Open(dst []byte, recvPrv *ecdh.PrivateKey, sendPub *ecdh.PublicKe
 
 		sendPubBytes := sendPub.Bytes()
 		kemContextSize += len(sendPubBytes)
-		bufSize := 32 + len(ss1) + len(ss2) + kemContextSize
+		bufSize := h.kemSecretLen + len(ss1) + len(ss2) + kemContextSize
 		if bufSize <= defaultBufSize {
 			var tmp [defaultBufSize]byte
 			buf = tmp[:]
 		} else {
 			buf = make([]byte, bufSize)
 		}
-		dh = buf[32 : 32+len(ss1)+len(ss2)]
-		kemContext = buf[32+len(ss1)+len(ss2) : bufSize]
+		dh = buf[h.kemSecretLen : h.kemSecretLen+len(ss1)+len(ss2)]
+		kemContext = buf[h.kemSecretLen+len(ss1)+len(ss2) : bufSize]
 		copy(dh, ss1)
 		copy(dh[len(ss1):], ss2)
 		copy(kemContext, ephPubBytes)
@@ -360,14 +393,14 @@ func (h *HPKE) Open(dst []byte, recvPrv *ecdh.PrivateKey, sendPub *ecdh.PublicKe
 			return nil, ErrDHZero
 		}
 
-		bufSize := 32 + kemContextSize
+		bufSize := h.kemSecretLen + kemContextSize
 		if bufSize <= defaultBufSize {
 			var tmp [defaultBufSize]byte
 			buf = tmp[:]
 		} else {
 			buf = make([]byte, bufSize)
 		}
-		kemContext = buf[32:bufSize]
+		kemContext = buf[h.kemSecretLen:bufSize]
 		copy(kemContext, ephPubBytes)
 		copy(kemContext[len(ephPubBytes):], recvPubBytes)
 	}
@@ -423,6 +456,7 @@ type HPKEContext struct {
 	seq       uint64
 	aead      cipher.AEAD
 	kemEncLen int
+	seqSealed bool
 }
 
 func (h *HPKE) SetupBaseSender(recvPub *ecdh.PublicKey, info []byte) (*HPKEContext, error) {
@@ -447,14 +481,14 @@ func (h *HPKE) SetupBaseSender(recvPub *ecdh.PublicKey, info []byte) (*HPKEConte
 	kemContextSize := len(ephPubBytes) + len(recvPubBytes)
 	var buf, kemContext []byte
 
-	bufSize := 32 + kemContextSize
+	bufSize := h.kemSecretLen + kemContextSize
 	if bufSize <= defaultBufSize {
 		var tmp [defaultBufSize]byte
 		buf = tmp[:]
 	} else {
 		buf = make([]byte, bufSize)
 	}
-	kemContext = buf[32:bufSize]
+	kemContext = buf[h.kemSecretLen:bufSize]
 	copy(kemContext, ephPubBytes)
 	copy(kemContext[len(ephPubBytes):], recvPubBytes)
 
@@ -495,14 +529,14 @@ func (h *HPKE) SetupBaseReceiver(recvPrv *ecdh.PrivateKey, ephPubBytes, info []b
 	kemContextSize := len(ephPubBytes) + len(recvPubBytes)
 	var buf, kemContext []byte
 
-	bufSize := 32 + kemContextSize
+	bufSize := h.kemSecretLen + kemContextSize
 	if bufSize <= defaultBufSize {
 		var tmp [defaultBufSize]byte
 		buf = tmp[:]
 	} else {
 		buf = make([]byte, bufSize)
 	}
-	kemContext = buf[32:bufSize]
+	kemContext = buf[h.kemSecretLen:bufSize]
 	copy(kemContext, ephPubBytes)
 	copy(kemContext[len(ephPubBytes):], recvPubBytes)
 
@@ -549,15 +583,15 @@ func (h *HPKE) SetupAuthSender(recvPub *ecdh.PublicKey, sendPrv *ecdh.PrivateKey
 	// kemContext: ephPubBytes + recvPubBytes + sendPubBytes
 	kemContextSize := len(ephPubBytes) + len(recvPubBytes) + len(sendPubBytes)
 	var buf, kemContext, dh []byte
-	bufSize := 32 + len(ss1) + len(ss2) + kemContextSize
+	bufSize := h.kemSecretLen + len(ss1) + len(ss2) + kemContextSize
 	if bufSize <= defaultBufSize {
 		var tmp [defaultBufSize]byte
 		buf = tmp[:]
 	} else {
 		buf = make([]byte, bufSize)
 	}
-	dh = buf[32 : 32+len(ss1)+len(ss2)]
-	kemContext = buf[32+len(ss1)+len(ss2) : bufSize]
+	dh = buf[h.kemSecretLen : h.kemSecretLen+len(ss1)+len(ss2)]
+	kemContext = buf[h.kemSecretLen+len(ss1)+len(ss2) : bufSize]
 	copy(dh, ss1)
 	copy(dh[len(ss1):], ss2)
 	copy(kemContext, ephPubBytes)
@@ -610,15 +644,15 @@ func (h *HPKE) SetupAuthReceiver(recvPrv *ecdh.PrivateKey, sendPub *ecdh.PublicK
 	kemContextSize := len(ephPubBytes) + len(recvPubBytes) + len(sendPubBytes)
 	var buf, kemContext, dh []byte
 
-	bufSize := 32 + len(ss1) + len(ss2) + kemContextSize
+	bufSize := h.kemSecretLen + len(ss1) + len(ss2) + kemContextSize
 	if bufSize <= defaultBufSize {
 		var tmp [defaultBufSize]byte
 		buf = tmp[:]
 	} else {
 		buf = make([]byte, bufSize)
 	}
-	dh = buf[32 : 32+len(ss1)+len(ss2)]
-	kemContext = buf[32+len(ss1)+len(ss2) : bufSize]
+	dh = buf[h.kemSecretLen : h.kemSecretLen+len(ss1)+len(ss2)]
+	kemContext = buf[h.kemSecretLen+len(ss1)+len(ss2) : bufSize]
 	copy(dh, ss1)
 	copy(dh[len(ss1):], ss2)
 	copy(kemContext, ephPubBytes)
@@ -640,26 +674,61 @@ func (h *HPKE) SetupAuthReceiver(recvPrv *ecdh.PrivateKey, sendPub *ecdh.PublicK
 
 // Seal seals the plaintext using the sender context.
 // It won't prepend the ephemeral public key, as it's already known from context.
+//
+// Sequence Number Design:
+// This library intentionally leaves sequence incrementation explicit (via IncrementSeq or SetSeq)
+// rather than auto-incrementing in Seal/Open. This supports real-world distributed patterns such as:
+//  1. Network retransmissions (resending the same sealed message without breaking receiver sync).
+//  2. Out-of-order or dropped packets (e.g. over UDP / message queues) where the receiver aligns
+//     its seq via message headers.
+//  3. Decoupled sender/receiver state machines.
+//
+// Misuse Defense:
+// In AEAD ciphers, reusing the same nonce under the same key for different plaintexts completely
+// breaks confidentiality and authenticity (Nonce Reuse Vulnerability). To prevent unintentional
+// nonce reuse, calling Seal multiple times with the same sequence number without calling IncrementSeq()
+// or SetSeq() will return ErrNonceReuse.
+//
+// If your application intentionally needs to retry or re-seal a message under the current sequence number,
+// explicitly call c.SetSeq(c.Seq()) to acknowledge and reset the guard state.
 func (c *HPKEContext) Seal(dst, plaintext, aad []byte) ([]byte, error) {
+	if c.seqSealed {
+		return nil, ErrNonceReuse
+	}
 	nonce := nonceForSeq(c.nonceBuf, c.baseNonce, c.seq)
+	c.seqSealed = true
 	return c.aead.Seal(dst, nonce, plaintext, aad), nil
 }
 
 // Open opens the ciphertext using the receiver context.
 // The ciphertext doesn't include the ephemeral public key.
-// It could reuse ciphertext as dst for in-place decryption, like ciphertext[:0]
+// It could reuse ciphertext as dst for in-place decryption, like ciphertext[:0].
+//
+// Open does not mutate or advance the sequence number, allowing idempotent decryption or message reprocessing.
 func (c *HPKEContext) Open(dst, ciphertext, aad []byte) ([]byte, error) {
 	nonce := nonceForSeq(c.nonceBuf, c.baseNonce, c.seq)
 	return c.aead.Open(dst, nonce, ciphertext, aad)
 }
 
+// IncrementSeq increments the sequence number by 1 and resets the seal guard,
+// allowing the next message to be sealed under the incremented sequence.
 func (c *HPKEContext) IncrementSeq() uint64 {
 	c.seq++
+	c.seqSealed = false
 	return c.seq
 }
 
+// SetSeq explicitly sets the sequence number and resets the seal guard.
+// Use this to synchronize sequence numbers across network frames, or to acknowledge
+// an intentional re-seal of a message under a specific sequence number.
 func (c *HPKEContext) SetSeq(seq uint64) {
 	c.seq = seq
+	c.seqSealed = false
+}
+
+// Seq returns the current sequence number of the context.
+func (c *HPKEContext) Seq() uint64 {
+	return c.seq
 }
 
 func (c *HPKEContext) KemEncLen() int {
@@ -721,14 +790,13 @@ func HPKEDecrypt[T, D typez.StrOrBytes](ciphertext T, aad D, recvPrv *ecdh.Priva
 // --- HKDF Implementation (RFC 5869) with HPKE Labeling ---
 
 // extractAndExpandDHKEM performs the Extract-and-Expand step for DHKEM.
-// buf need 32 bytes of space.
 func (h *HPKE) extractAndExpandDHKEM(buf, dh, kemContext []byte) []byte {
 	// eae_prk = LabeledExtract(salt=0, "eae_prk", dh)  (uses kemSuite in LabeledExtract)
-	eaePrk := labeledExtract(buf[:0], h.kemSuiteID, nil, labelEAEPrk, dh)
+	eaePrk := labeledExtractWithHash(h.kemHash, buf[:0], h.kemSuiteID, nil, labelEAEPrk, dh)
 
 	// shared_secret = LabeledExpand(eae_prk, "shared_secret", kemContext, Nh)
-	mac := hmac.New(sha256.New, eaePrk)
-	shared := labeledExpand(buf[:0], mac, h.kemSuiteID, labelShared, kemContext, sha256.Size)
+	mac := hmac.New(h.kemHash, eaePrk)
+	shared := labeledExpand(buf[:0], mac, h.kemSuiteID, labelShared, kemContext, h.kemSecretLen)
 	return shared
 }
 
@@ -784,13 +852,17 @@ func (h *HPKE) buildHPKEContext(buf, key, baseNonce, ephPubBytes []byte) (*HPKEC
 	}, nil
 }
 
-// dst must have 32 bytes of space at least.
+// dst must have hash size bytes of space at least.
 func labeledExtract(dst, suiteID, salt, label, ikm []byte) []byte {
+	return labeledExtractWithHash(sha256.New, dst, suiteID, salt, label, ikm)
+}
+
+func labeledExtractWithHash(h func() hash.Hash, dst, suiteID, salt, label, ikm []byte) []byte {
 	// RFC 9180: salt should be empty string (zero-length), not zeros
 	if salt == nil {
 		salt = []byte{} // Empty slice, not zeros[:]
 	}
-	mac := hmac.New(sha256.New, salt)
+	mac := hmac.New(h, salt)
 	mac.Write(versionLabel)
 	mac.Write(suiteID)
 	mac.Write(label)
@@ -798,10 +870,14 @@ func labeledExtract(dst, suiteID, salt, label, ikm []byte) []byte {
 	return mac.Sum(dst)
 }
 
+func (h *HPKE) KEMSecretLen() int {
+	return h.kemSecretLen
+}
+
 // dst must have ceil(l/HashLen) * HashLen bytes of space at least.
 func labeledExpand(dst []byte, mac hash.Hash, suiteID, label, info []byte, l int) []byte {
 	// LabeledInfo construction (virtual, we write parts directly)
-	// Format: I2OSP(L, 2) || suite_id || label || info
+	// Format: I2OSP(L, 2) || "HPKE-v1" || suite_id || label || info
 
 	// mac is already initialized with the key (prk)
 
@@ -833,14 +909,8 @@ func labeledExpand(dst []byte, mac hash.Hash, suiteID, label, info []byte, l int
 		// Append directly to dst
 		dst = mac.Sum(dst)
 
-		// Update t to be the last block (which was just appended)
-		// The hash size is 32 for SHA256
-		// Note: mac.Sum appends 32 bytes.
-		// If we needed less than 32 bytes for the last block, dst will be larger than targetLen.
-		// We need to be careful with t.
-
-		// t is the last 32 bytes appended.
-		t = dst[len(dst)-32:]
+		// t is the last HashLen bytes appended
+		t = dst[len(dst)-mac.Size():]
 
 		ctr++
 	}

@@ -332,3 +332,80 @@ func testRing(r ringI, cap int, t *testing.T) {
 		t.Errorf("expected length 0, got %d", r.Len())
 	}
 }
+
+func TestRing_ZeroValue(t *testing.T) {
+	var r Ring[int]
+
+	if !r.IsEmpty() {
+		t.Errorf("expected IsEmpty to be true for zero value")
+	}
+	if !r.IsFull() {
+		t.Errorf("expected IsFull to be true for zero value")
+	}
+	if r.Len() != 0 {
+		t.Errorf("expected Len to be 0, got %d", r.Len())
+	}
+	if r.Cap() != 0 {
+		t.Errorf("expected Cap to be 0, got %d", r.Cap())
+	}
+
+	if r.Push(1) {
+		t.Errorf("expected Push to return false for zero value Ring")
+	}
+
+	if val, ok := r.Pop(); ok || val != 0 {
+		t.Errorf("expected Pop to return (0, false), got (%d, %v)", val, ok)
+	}
+
+	if val, ok := r.Peek(); ok || val != 0 {
+		t.Errorf("expected Peek to return (0, false), got (%d, %v)", val, ok)
+	}
+
+	r.PushWithGrow(42)
+	if r.Len() != 1 {
+		t.Errorf("expected Len to be 1 after PushWithGrow, got %d", r.Len())
+	}
+	if r.Cap() <= 0 {
+		t.Errorf("expected Cap > 0 after PushWithGrow, got %d", r.Cap())
+	}
+
+	val, ok := r.Pop()
+	if !ok || val != 42 {
+		t.Errorf("expected Pop to return (42, true), got (%d, %v)", val, ok)
+	}
+	if !r.IsEmpty() {
+		t.Errorf("expected ring to be empty after popping all elements")
+	}
+}
+
+func TestRing_EnqueueDequeue(t *testing.T) {
+	r := New[int](3)
+
+	if !r.Enqueue(10) {
+		t.Error("expected Enqueue(10) to succeed")
+	}
+	if !r.Enqueue(20) {
+		t.Error("expected Enqueue(20) to succeed")
+	}
+	if !r.Enqueue(30) {
+		t.Error("expected Enqueue(30) to succeed")
+	}
+	if r.Enqueue(40) {
+		t.Error("expected Enqueue(40) to fail on full ring")
+	}
+
+	v, ok := r.Dequeue()
+	if !ok || v != 10 {
+		t.Errorf("expected (10, true), got (%v, %v)", v, ok)
+	}
+
+	r.EnqueueWithGrow(50)
+	if r.Len() != 3 {
+		t.Errorf("expected len 3, got %d", r.Len())
+	}
+
+	v, ok = r.Dequeue()
+	if !ok || v != 20 {
+		t.Errorf("expected (20, true), got (%v, %v)", v, ok)
+	}
+}

@@ -38,7 +38,7 @@ var (
 	keyDeriverRegistry = make(map[[IDLen]byte]KeyDeriver, 4)
 
 	defKeyDeriver = PBKDF2KeyDeriver{
-		Iter: 10_000,
+		Iter: 100_000,
 		Hash: crypto.SHA256,
 	}
 )
@@ -54,7 +54,7 @@ func RegisterKeyDeriver(deriver KeyDeriver) {
 // PasswordEncrypt using password to encrypt plainText with additional data ad.
 // It generates a random salt and nonce internally. It uses the provided keyDeriver
 // to derive the encryption key from the password and salt.
-// If keyDeriver is nil, it uses the default PBKDF2 with SHA256 and 10,000 iterations.
+// If keyDeriver is nil, it uses the default PBKDF2 with SHA256 and 100,000 iterations.
 // If using custom key deriver, make sure to call RegisterKeyDeriver register it before decryption.
 // The output is base64 URL encoded cipher text.
 func PasswordEncrypt[T, P, D typez.StrOrBytes](plainText T, password P, ad D, keyDeriver KeyDeriver) ([]byte, error) {
@@ -126,12 +126,12 @@ func PasswordDecrypt[T, P, D typez.StrOrBytes](cipherText T, password P, ad D) (
 	}
 }
 
-// PasswordEncryptStream using password to encrypt data from stream and write to dst.
+// PasswordEncryptStream using password to encrypt data from src and write to dst.
 // It generates a random salt and iv internally. It uses the provided keyDeriver
 // to derive the encryption key from the password and salt.
-// If keyDeriver is nil, it uses the default PBKDF2 with SHA256 and 10,000 iterations.
+// If keyDeriver is nil, it uses the default PBKDF2 with SHA256 and 100,000 iterations.
 // If using custom key deriver, make sure to call RegisterKeyDeriver register it before decryption.
-func PasswordEncryptStream[P typez.StrOrBytes](dst io.Writer, stream io.Reader, password P, keyDeriver KeyDeriver) error {
+func PasswordEncryptStream[P typez.StrOrBytes](dst io.Writer, src io.Reader, password P, keyDeriver KeyDeriver) error {
 	if keyDeriver == nil {
 		keyDeriver = defKeyDeriver
 	}
@@ -157,7 +157,7 @@ func PasswordEncryptStream[P typez.StrOrBytes](dst io.Writer, stream io.Reader, 
 	iv := saltAndIv[saltLen16:]
 	key := keyDeriver.Key(strz.UnsafeStrOrBytesToBytes(password), salt, keyLen)
 
-	err = AESCTRStreamEncrypt(w, stream, key, iv)
+	err = AESCTRStreamEncrypt(w, src, key, iv)
 	if err != nil {
 		return err
 	}
@@ -165,13 +165,13 @@ func PasswordEncryptStream[P typez.StrOrBytes](dst io.Writer, stream io.Reader, 
 	return w.Flush()
 }
 
-// PasswordDecryptStream using password to decrypt data from stream and write to dst.
-// It uses the key deriver header in the stream to restore the key deriver
+// PasswordDecryptStream using password to decrypt data from src and write to dst.
+// It uses the key deriver header in the src to restore the key deriver
 // and derive the encryption key from the password and salt.
 // If using custom key deriver, make sure to call RegisterKeyDeriver register it before decryption.
-func PasswordDecryptStream[P typez.StrOrBytes](dst io.Writer, stream io.Reader, password P) error {
+func PasswordDecryptStream[P typez.StrOrBytes](dst io.Writer, src io.Reader, password P) error {
 	buf := make([]byte, saltLen16+aes.BlockSize+IDLen)
-	r := bufio.NewReader(stream)
+	r := bufio.NewReader(src)
 
 	_, err := io.ReadFull(r, buf[:encPrefixLen])
 	if err != nil {

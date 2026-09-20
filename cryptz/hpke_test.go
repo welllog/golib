@@ -7,6 +7,7 @@ import (
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/rand"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -442,6 +443,7 @@ func TestHPKEContext_Seal(t *testing.T) {
 
 	testz.Nil(t, err)
 
+	sctx.SetSeq(0)
 	ret, err = sctx.Seal(nil, plaintext, aad)
 	testz.Nil(t, err)
 
@@ -480,4 +482,175 @@ func TestHPKEContext_Seal(t *testing.T) {
 		rctx.IncrementSeq()
 	}
 
+}
+
+func TestHPKEContext_NonceReuseDefense(t *testing.T) {
+	hpke := NewHPKE(ecdh.X25519())
+	prv, pub, err := hpke.GenerateKey()
+	testz.Nil(t, err)
+
+	sctx, err := hpke.SetupBaseSender(pub, nil)
+	testz.Nil(t, err)
+
+	plaintext1 := []byte("secret message 1")
+	plaintext2 := []byte("secret message 2")
+
+	// 1. 第一次加密应成功
+	testz.Equal(t, uint64(0), sctx.Seq())
+	ct1, err := sctx.Seal(nil, plaintext1, nil)
+	testz.Nil(t, err)
+
+	// 2. 同一 seq 下未更新 seq 再次调用 Seal，必须被拦截并返回 ErrNonceReuse
+	_, err = sctx.Seal(nil, plaintext2, nil)
+	testz.Equal(t, ErrNonceReuse, err)
+
+	// 3. 调用 IncrementSeq 后，可以正常加密下一条
+	sctx.IncrementSeq()
+	testz.Equal(t, uint64(1), sctx.Seq())
+	ct2, err := sctx.Seal(nil, plaintext2, nil)
+	testz.Nil(t, err)
+	testz.Assert(t, len(ct2) > 0)
+
+	// 4. 调用 SetSeq 显式指定序号（如业务重试），可以正常重新加密
+	sctx.SetSeq(1)
+	ct2Retry, err := sctx.Seal(nil, plaintext2, nil)
+	testz.Nil(t, err)
+	testz.Assert(t, len(ct2Retry) > 0)
+
+	// 5. 验证解密端 Open 允许对同一密文进行多次幂等解密（不受防呆拦截）
+	rctx, err := hpke.SetupBaseReceiver(prv, sctx.EphPublicKey(), nil)
+	testz.Nil(t, err)
+
+	// 解密第一条
+	pt1, err := rctx.Open(nil, ct1, nil)
+	testz.Nil(t, err)
+	testz.Equal(t, plaintext1, pt1)
+
+	// 再次解密同一条（验证幂等重试解密）
+	pt1Retry, err := rctx.Open(nil, ct1, nil)
+	testz.Nil(t, err)
+	testz.Equal(t, plaintext1, pt1Retry)
+}
+
+func TestHPKE_API_P384(t *testing.T) {
+	hpke := NewHPKE(ecdh.P384())
+	testz.Equal(t, 97, hpke.KEMEncLen())
+	testz.Equal(t, 48, hpke.KEMSecretLen())
+
+	recvPrv, recvPub, err := hpke.GenerateKey()
+	testz.Nil(t, err)
+
+	sendPrv, sendPub, err := hpke.GenerateKey()
+	testz.Nil(t, err)
+
+	msg := []byte("hello p384 with sha384 DHKEM")
+	ad := []byte("auth header")
+
+	// Auth mode
+	ct, err := hpke.Seal(nil, sendPrv, recvPub, nil, msg, ad)
+	testz.Nil(t, err)
+
+	pt, err := hpke.Open(nil, recvPrv, sendPub, nil, ct, ad)
+	testz.Nil(t, err)
+	testz.Equal(t, msg, pt)
+
+	// Base mode
+	ctBase, err := hpke.Seal(nil, nil, recvPub, nil, msg, ad)
+	testz.Nil(t, err)
+
+	ptBase, err := hpke.Open(nil, recvPrv, nil, nil, ctBase, ad)
+	testz.Nil(t, err)
+	testz.Equal(t, msg, ptBase)
+
+	// Context API
+	sctx, err := hpke.SetupBaseSender(recvPub, nil)
+	testz.Nil(t, err)
+	rctx, err := hpke.SetupBaseReceiver(recvPrv, sctx.EphPublicKey(), nil)
+	testz.Nil(t, err)
+
+	ctCtx, err := sctx.Seal(nil, msg, ad)
+	testz.Nil(t, err)
+	ptCtx, err := rctx.Open(nil, ctCtx, ad)
+	testz.Nil(t, err)
+	testz.Equal(t, msg, ptCtx)
+}
+
+func TestHPKE_API_P521(t *testing.T) {
+	hpke := NewHPKE(ecdh.P521())
+	testz.Equal(t, 133, hpke.KEMEncLen())
+	testz.Equal(t, 64, hpke.KEMSecretLen())
+
+	recvPrv, recvPub, err := hpke.GenerateKey()
+	testz.Nil(t, err)
+
+	sendPrv, sendPub, err := hpke.GenerateKey()
+	testz.Nil(t, err)
+
+	msg := []byte("hello p521 with sha512 DHKEM")
+	ad := []byte("auth header 521")
+
+	// Auth mode
+	ct, err := hpke.Seal(nil, sendPrv, recvPub, nil, msg, ad)
+	testz.Nil(t, err)
+
+	pt, err := hpke.Open(nil, recvPrv, sendPub, nil, ct, ad)
+	testz.Nil(t, err)
+	testz.Equal(t, msg, pt)
+
+	// Base mode
+	ctBase, err := hpke.Seal(nil, nil, recvPub, nil, msg, ad)
+	testz.Nil(t, err)
+
+	ptBase, err := hpke.Open(nil, recvPrv, nil, nil, ctBase, ad)
+	testz.Nil(t, err)
+	testz.Equal(t, msg, ptBase)
+
+	// Context API
+	sctx, err := hpke.SetupBaseSender(recvPub, nil)
+	testz.Nil(t, err)
+	rctx, err := hpke.SetupBaseReceiver(recvPrv, sctx.EphPublicKey(), nil)
+	testz.Nil(t, err)
+
+	ctCtx, err := sctx.Seal(nil, msg, ad)
+	testz.Nil(t, err)
+	ptCtx, err := rctx.Open(nil, ctCtx, ad)
+	testz.Nil(t, err)
+	testz.Equal(t, msg, ptCtx)
+}
+
+func TestHPKE_KEM_Parameters(t *testing.T) {
+	cases := []struct {
+		curve     ecdh.Curve
+		encLen    int
+		secretLen int
+	}{
+		{ecdh.P256(), 65, 32},
+		{ecdh.X25519(), 32, 32},
+		{ecdh.P384(), 97, 48},
+		{ecdh.P521(), 133, 64},
+	}
+
+	for _, tc := range cases {
+		h := NewHPKE(tc.curve)
+		if got := h.KEMEncLen(); got != tc.encLen {
+			t.Errorf("curve %v KEMEncLen got %d, want %d", tc.curve, got, tc.encLen)
+		}
+		if got := h.KEMSecretLen(); got != tc.secretLen {
+			t.Errorf("curve %v KEMSecretLen got %d, want %d", tc.curve, got, tc.secretLen)
+		}
+	}
+}
+
+func TestHPKE_Seal_PlaintextOverlap(t *testing.T) {
+	h := NewHPKE(ecdh.P256())
+	_, recvPub, err := h.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pt := bytes.Repeat([]byte("A"), 200)
+	_, err = h.Seal(pt[:0], nil, recvPub, nil, pt, nil)
+	if !errors.Is(err, ErrBufferOverlap) {
+		t.Fatalf("expected ErrBufferOverlap when dst and plaintext overlap, got: %v", err)
+	}
 }

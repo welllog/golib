@@ -628,8 +628,8 @@ func Copy[T any](s []T, start, length int) []T {
 	return append([]T(nil), s[start:start+length]...)
 }
 
-// Values returns a new slice containing the values returned by applying fn to each element of s.
-func Values[T, V any](fn func(T) V, ss ...[]T) []V {
+// Map returns a new slice containing the values returned by applying fn to each element of s.
+func Map[T, V any](fn func(T) V, ss ...[]T) []V {
 	var n int
 	for _, s := range ss {
 		n += len(s)
@@ -644,6 +644,13 @@ func Values[T, V any](fn func(T) V, ss ...[]T) []V {
 		}
 	}
 	return ret
+}
+
+// Values returns a new slice containing the values returned by applying fn to each element of s.
+//
+// Deprecated: Use Map instead.
+func Values[T, V any](fn func(T) V, ss ...[]T) []V {
+	return Map(fn, ss...)
 }
 
 // Remove removes the element at the given index from s.

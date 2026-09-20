@@ -98,9 +98,7 @@ func IsEven[T typez.Integer](n T) bool {
 
 // Swap swaps the values of a and b.
 func Swap[T typez.Integer](a, b *T) {
-	*a ^= *b
-	*b ^= *a
-	*a ^= *b
+	*a, *b = *b, *a
 }
 
 // BinaryInt64 returns the binary representation of n.
@@ -114,58 +112,100 @@ func BinaryFloat64(n float64) string {
 	return strconv.FormatUint(*(*uint64)(unsafe.Pointer(&n)), 2)
 }
 
-// MaxBitApprox return the highest 1 in n
-func MaxBitApprox[T typez.Integer](n T) T {
+// HighestBit returns the highest 1 in n (the largest power of 2 less than or equal to n).
+func HighestBit[T typez.Integer](n T) T {
 	return 1 << uint(bits.Len64(uint64(n))-1)
 }
 
-// MinBitApprox returns the lowest 1 in n
-func MinBitApprox[T typez.Signed](n T) T {
+// LowestBit returns the lowest 1 in n (the smallest power of 2 that divides n).
+func LowestBit[T typez.Signed](n T) T {
 	return n & (-n)
 }
 
-// EnumToBitMask converts a slice of integers (starting from 1) to a bitmask integer.
-// Caller must ensure that the integers are positive and within the range of the bitmask type.
-func EnumToBitMask[T typez.Integer](nums []T) T {
+// PackEnums converts a slice of integers (starting from 1) to an aggregated bit representation.
+// Caller must ensure that the integers are positive and within the bit width range of T.
+func PackEnums[T typez.Integer](enums []T) T {
 	var mask T
-	for _, num := range nums {
-		if num > 0 {
-			mask |= 1 << (num - 1)
+	for _, e := range enums {
+		if e > 0 {
+			mask |= 1 << (e - 1)
 		}
 	}
 	return mask
 }
 
-// BitMaskToEnum converts a bitmask integer to a slice of integers (starting from 1).
-func BitMaskToEnum[T typez.Integer](mask T) []T {
-	var nums []T
+// UnpackEnums converts an aggregated bit representation to a slice of integers (starting from 1).
+func UnpackEnums[T typez.Integer](mask T) []T {
+	var enums []T
 	for i := T(0); mask > 0; i++ {
 		if mask&1 == 1 {
-			nums = append(nums, i+1)
+			enums = append(enums, i+1)
 		}
 		mask >>= 1
 	}
-	return nums
+	return enums
+}
+
+// ContainsEnum checks if the bit representation contains a specific number (starting from 1).
+func ContainsEnum[T typez.Integer](mask T, enum T) bool {
+	if enum <= 0 {
+		return false
+	}
+	return (mask & (1 << (enum - 1))) != 0
+}
+
+// UnpackFlags converts an aggregated bit representation to a slice of integers that are powers of 2.
+func UnpackFlags[T typez.Integer](mask T) []T {
+	var flags []T
+	for i := T(0); mask > 0; i++ {
+		if mask&1 == 1 {
+			flags = append(flags, 1<<i)
+		}
+		mask >>= 1
+	}
+	return flags
+}
+
+// EnumToBitMask converts a slice of integers (starting from 1) to a bitmask integer.
+//
+// Deprecated: Use PackEnums instead.
+func EnumToBitMask[T typez.Integer](nums []T) T {
+	return PackEnums(nums)
+}
+
+// BitMaskToEnum converts a bitmask integer to a slice of integers (starting from 1).
+//
+// Deprecated: Use UnpackEnums instead.
+func BitMaskToEnum[T typez.Integer](mask T) []T {
+	return UnpackEnums(mask)
 }
 
 // BitMaskContains checks if a bitmask contains a specific number (starting from 1).
+//
+// Deprecated: Use ContainsEnum instead.
 func BitMaskContains[T typez.Integer](mask T, num T) bool {
-	if num <= 0 {
-		return false
-	}
-	return (mask & (1 << (num - 1))) != 0
+	return ContainsEnum(mask, num)
 }
 
 // BitMaskToPower2Enum converts a bitmask integer to a slice of integers that are powers of 2.
+//
+// Deprecated: Use UnpackFlags instead.
 func BitMaskToPower2Enum[T typez.Integer](mask T) []T {
-	var nums []T
-	for i := T(0); mask > 0; i++ {
-		if mask&1 == 1 {
-			nums = append(nums, 1<<i)
-		}
-		mask >>= 1
-	}
-	return nums
+	return UnpackFlags(mask)
+}
+
+// MaxBitApprox returns the highest 1 in n.
+//
+// Deprecated: Use HighestBit instead.
+func MaxBitApprox[T typez.Integer](n T) T {
+	return HighestBit(n)
+}
+
+// MinBitApprox returns the lowest 1 in n.
+//
+// Deprecated: Use LowestBit instead.
+func MinBitApprox[T typez.Signed](n T) T {
+	return LowestBit(n)
 }
 
 // Haversine calculates the distance between two points on the Earth specified by latitude/longitude.
@@ -184,7 +224,7 @@ func Haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	// Haversine
 	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
 		math.Cos(lat1Rad)*math.Cos(lat2Rad)*math.Sin(dLon/2)*math.Sin(dLon/2)
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(math.Max(0, 1-a)))
 
 	return earthRadius * c
 }

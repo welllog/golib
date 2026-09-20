@@ -137,3 +137,12 @@ func TestGraph_GetPaths(t *testing.T) {
 		testz.Equal(t, v, paths[i], "unexpected path")
 	}
 }
+
+func TestGraph_BronKerbosch_SelfLoop(t *testing.T) {
+	var g Graph[string]
+	g.Init(2)
+	g.AddEdge("a", "a")
+	cliques := g.GetMaximalCliques()
+	testz.Equal(t, 1, len(cliques))
+	testz.Equal(t, []string{"a"}, cliques[0])
+}
